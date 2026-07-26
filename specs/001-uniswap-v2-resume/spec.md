@@ -8,6 +8,30 @@
 
 **Input**: User description: "Build a Uniswap V2 clone as resume project with swap, liquidity management, and portfolio view"
 
+## Clarifications
+
+### Session 2026-07-26
+
+- Q: Which Ethereum network(s) should the app target for demonstration? → A: Local anvil for development + Sepolia testnet for final deployment
+- Q: Which tokens should be available for swap/liquidity by default? → A: Hardcoded demo tokens (WETH, USDC, DAI, WBTC)
+- Q: How should token prices be displayed to users in the UI? → A: On-chain TWAP only
+- Q: Which features should be explicitly OUT of scope for this resume project? → A: No flash swaps + No multi-hop routing
+- Q: How detailed should error messages be when transactions fail? → A: Detailed error codes + human-readable messages
+
+## Deployment Target
+
+- **Development**: Local anvil instance for rapid iteration, zero gas costs, and full test control
+- **Production Demo**: Sepolia testnet for public demonstration with real wallet UX
+- **Contract Deployment**: Forge scripts targeting both anvil (local) and Sepolia (testnet)
+- **RPC Configuration**: Anvil default (http://127.0.0.1:8545) for dev; Sepolia public RPC or user-configured provider for testnet
+
+## Token Configuration
+
+- **Token List**: Hardcoded set of demo tokens for development and demo consistency
+- **Core Tokens**: WETH, USDC, DAI, WBTC
+- **Pair Initialization**: Token pairs created during deployment script (anvil) or manual setup (Sepolia)
+- **Decimals**: Standard ERC-20 decimals (WETH=18, USDC=6, DAI=18, WBTC=8)
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Token Swap Execution (Priority: P1)
@@ -84,6 +108,8 @@ As a reviewer, I want to view my liquidity positions and portfolio summary so th
 - How does system handle network switching or wallet disconnection during active transaction?
 - What happens when token pair has extreme price imbalance?
 - How does system handle transaction failures due to gas price changes?
+- How are transaction errors surfaced to users? → Detailed error codes with human-readable messages for all failure modes
+- How does the system differentiate between user rejection, network failure, and contract revert errors?
 
 ## Requirements *(mandatory)*
 
@@ -99,6 +125,7 @@ As a reviewer, I want to view my liquidity positions and portfolio summary so th
 - **FR-008**: System MUST handle transaction failures gracefully with clear error messages
 - **FR-009**: System MUST display real-time token prices and pool statistics
 - **FR-010**: System MUST provide responsive design for both desktop and mobile interfaces
+- **FR-011**: The following features are explicitly OUT OF SCOPE: flash swaps, multi-hop routing; swaps are direct pair swaps only
 
 ### Key Entities
 
@@ -126,7 +153,8 @@ As a reviewer, I want to view my liquidity positions and portfolio summary so th
 - Users have MetaMask or similar Web3 wallet installed and configured
 - Target network has sufficient liquidity in token pairs for meaningful swaps
 - Users understand basic DeFi concepts (swapping, liquidity provision)
-- Project will use testnet for demonstration purposes to avoid real financial risk
+- Project will use local anvil for development and Sepolia testnet for final demonstration to avoid real financial risk
 - Existing decentralized exchange contract deployments will be used where possible for compatibility
 - Frontend will be responsive and work on both desktop and mobile devices
-- All transactions will be simulated or performed on testnet for resume demonstration
+- All transactions will be simulated (anvil) or performed on testnet (Sepolia) for resume demonstration
+- Sepolia demo will use public RPC or user-configured provider; RPC reliability may vary
