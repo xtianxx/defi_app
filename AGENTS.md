@@ -27,6 +27,7 @@ Monorepo for a Uniswap V2–style DEX resume project. Two independent packages: 
 | CI workflow | contracts/.github/workflows/test.yml | ⚠️ Misplaced — needs root .github/workflows/ |
 | Deployment scripts | contracts/script/ | forge script entry points |
 | Agent commands | .opencode/commands/ | 15 speckit subcommands |
+| Spec source of truth | specs/001-uniswap-v2-resume/ | NOT .omo/specs/ (mirror, diverges — missing spec.md/tasks.md/checklists/) |
 
 ## CONVENTIONS
 - **Packages are independent** — no root workspace, no cross-package imports
@@ -51,7 +52,7 @@ Monorepo for a Uniswap V2–style DEX resume project. Two independent packages: 
 - **CI misplaced**: `contracts/.github/workflows/test.yml` won't execute; move to `.github/workflows/test.yml`
 - **lib/ gitignored**: Run `forge install` after clone to fetch forge-std
 - **OpenZeppelin** exists in contracts/lib/ but NOT in .gitmodules — may need re-install
-- **Spec duplication**: `specs/` and `.omo/specs/` contain identical files — sync risk
+- **Spec divergence**: `specs/` (8 entries, authoritative) and `.omo/specs/` (5 entries) diverge — `.omo/` missing spec.md, tasks.md, checklists/; plan.md differs between copies. Always edit in `specs/`
 - **hooks/, interfaces/, libraries/ are empty scaffolds** — intended for Uniswap V2 implementation
 - **Frontend migration planned**: Vite → Next.js 15 per plan.md constitution amendment
 
