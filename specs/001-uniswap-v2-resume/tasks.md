@@ -20,14 +20,14 @@
 
 **Purpose**: Project initialization, tooling configuration, scaffold structure
 
-- [ ] T001 Reorganize `contracts/` per plan.md: create `src/core/{interfaces,libraries}`, `src/router/{interfaces,libraries}`, `script/{core,router}`, `test/{core,router,mocks,utils}` directories
-- [ ] T002 [P] Configure `contracts/foundry.toml`: solc_version = "0.8.19", via_ir = true, optimizer = true, optimizer_runs = 200 (research R0.2)
-- [ ] T003 [P] Install/verify Foundry libs in `contracts/lib`: `forge install foundry-rs/forge-std`; verify OpenZeppelin per AGENTS.md note
-- [ ] T004 [P] Replace `frontend/` Vite scaffold with Next.js 15 App Router: `package.json` (next@15, react@19, react-dom, ethers@6, tailwindcss, @radix-ui/*, lucide-react, @tanstack/react-query), `next.config.mjs`, `tsconfig.json` (strict: noUnusedLocals, noUnusedParameters, erasableSyntaxOnly, verbatimModuleSyntax), `tailwind.config.ts`, `postcss.config.mjs`, `components.json` (shadcn/ui)
-- [ ] T005 [P] Configure frontend test tooling: ESLint 10 flat config (js + tseslint + react-hooks + react-refresh), Vitest + @testing-library/react + @testing-library/jest-dom, Playwright; tsconfig strict flags from AGENTS.md
-- [ ] T006 [P] Scaffold `frontend/src/`: `app/{layout.tsx,page.tsx,swap/,liquidity/,portfolio/,api/reserves/}`, `src/{hooks,lib,components,providers,styles}/`, `styles/globals.css`
-- [ ] T007 [P] Create root `.github/workflows/test.yml` (move misplaced `contracts/.github/workflows/test.yml`): CI matrix — forge fmt --check → forge build --sizes → forge test -vvv → forge test --coverage; frontend lint → vitest → playwright e2e
-- [ ] T008 Apply constitution amendment Vite→Next.js in `.specify/memory/constitution.md`: bump version 1.0.0 → 1.1.0 (MINOR), update "Frontend Requirements" section to "React 19 with TypeScript; **Next.js 15 (App Router) for build tooling and routing**; ethers.js v6 for Web3 integration..." per plan.md amendment block
+- [X] T001 Reorganize `contracts/` per plan.md: create `src/core/{interfaces,libraries}`, `src/router/{interfaces,libraries}`, `script/{core,router}`, `test/{core,router,mocks,utils}` directories
+- [X] T002 [P] Configure `contracts/foundry.toml`: solc_version = "0.8.19", via_ir = true, optimizer = true, optimizer_runs = 200 (research R0.2)
+- [X] T003 [P] Install/verify Foundry libs in `contracts/lib`: `forge install foundry-rs/forge-std`; verify OpenZeppelin per AGENTS.md note
+- [X] T004 [P] Replace `frontend/` Vite scaffold with Next.js 15 App Router: `package.json` (next@15, react@19, react-dom, ethers@6, tailwindcss, @radix-ui/*, lucide-react, @tanstack/react-query), `next.config.mjs`, `tsconfig.json` (strict: noUnusedLocals, noUnusedParameters, erasableSyntaxOnly, verbatimModuleSyntax), `tailwind.config.ts`, `postcss.config.mjs`, `components.json` (shadcn/ui)
+- [X] T005 [P] Configure frontend test tooling: ESLint 10 flat config (js + tseslint + react-hooks + react-refresh), Vitest + @testing-library/react + @testing-library/jest-dom, Playwright; tsconfig strict flags from AGENTS.md
+- [X] T006 [P] Scaffold `frontend/src/`: `app/{layout.tsx,page.tsx,swap/,liquidity/,portfolio/,api/reserves/}`, `src/{hooks,lib,components,providers,styles}/`, `styles/globals.css`
+- [X] T007 [P] Create root `.github/workflows/test.yml` (move misplaced `contracts/.github/workflows/test.yml`): CI matrix — forge fmt --check → forge build --sizes → forge test -vvv → forge test --coverage; frontend lint → vitest → playwright e2e
+- [X] T008 Apply constitution amendment Vite→Next.js in `.specify/memory/constitution.md`: bump version 1.0.0 → 1.1.0 (MINOR), update "Frontend Requirements" section to "React 19 with TypeScript; **Next.js 15 (App Router) for build tooling and routing**; ethers.js v6 for Web3 integration..." per plan.md amendment block
 
 ---
 

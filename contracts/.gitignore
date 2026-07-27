@@ -2,6 +2,9 @@
 cache/
 out/
 
+# Library
+lib/
+
 # Commonly ignored directories
 .logs/
 .ignore/
@@ -18,3 +21,15 @@ docs/
 .env
 .env.*
 !.env.example
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.tmp
+
+# Coverage
+coverage/
+lcov.info
+
