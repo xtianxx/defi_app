@@ -60,15 +60,37 @@ export function Web3Provider({ children }: { children: ReactNode }) {
     const ethereum = getInjectedEthereum();
     if (!ethereum || !ethereum.on) return;
 
-    const onAccountsChanged = (accounts: unknown) => {
+    const onAccountsChanged = async (accounts: unknown) => {
       const list = Array.isArray(accounts) ? (accounts as string[]) : [];
       if (list.length === 0) {
         // Disconnected
         setAccount(null);
         setSigner(null);
+        setProvider(null);
         setStatus("idle");
-      } else {
-        setAccount(list[0] as `0x${string}`);
+        return;
+      }
+      // Account switched — rebuild provider + signer for the new account.
+      // Without this, provider/signer stay stale and all hooks read null state.
+      const newAccount = list[0] as `0x${string}`;
+      const ethereum = getInjectedEthereum();
+      if (!ethereum) {
+        setAccount(newAccount);
+        return;
+      }
+      try {
+        const browserProvider = new BrowserProvider(ethereum as never, "any");
+        const newSigner = await browserProvider.getSigner();
+        const net = await browserProvider.getNetwork();
+        setProvider(browserProvider);
+        setSigner(newSigner);
+        setAccount(newAccount);
+        setChainId(Number(net.chainId));
+        setStatus("ready");
+      } catch (err) {
+        const entry = decodeError(err);
+        setError({ code: entry.code, message: entry.message });
+        setStatus("error");
       }
     };
     const onChainChanged = (chainHex: unknown) => {
@@ -81,6 +103,7 @@ export function Web3Provider({ children }: { children: ReactNode }) {
     const onDisconnect = (_err: unknown) => {
       setAccount(null);
       setSigner(null);
+      setProvider(null);
       setStatus("idle");
     };
     handlersRef.current = { accountsChanged: onAccountsChanged, chainChanged: onChainChanged, disconnect: onDisconnect };

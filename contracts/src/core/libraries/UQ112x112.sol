@@ -19,6 +19,7 @@ library UQ112x112 {
 
     /// @notice Decode a Q112.112 back to its uint112 value (truncates fractional bits).
     function decode(uint224 x) internal pure returns (uint112 y) {
+        // forge-lint: disable-next-line(unsafe-typecast)
         y = uint112(x >> 112);
     }
 }

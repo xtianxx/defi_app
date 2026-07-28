@@ -5,6 +5,7 @@ import {Test} from "forge-std/Test.sol";
 import {UniswapV2Pair} from "../../src/core/UniswapV2Pair.sol";
 import {UniswapV2Factory} from "../../src/core/UniswapV2Factory.sol";
 import {MockERC20} from "../mocks/MockERC20.sol";
+import {MaliciousERC20} from "../mocks/MaliciousERC20.sol";
 
 contract UniswapV2PairTest is Test {
     UniswapV2Factory internal factory;
@@ -75,6 +76,7 @@ contract UniswapV2PairTest is Test {
         _addInitialLiquidity();
         uint256 lp = pair.balanceOf(alice);
         vm.prank(alice);
+        // forge-lint: disable-next-line(erc20-unchecked-transfer)
         pair.transfer(address(pair), lp);
         pair.burn(alice);
         // alice should have 0 LP. Due to MINIMUM_LIQUIDITY rounding, she gets
@@ -184,5 +186,69 @@ contract UniswapV2PairTest is Test {
         pair.sync();
         assertGt(pair.price0CumulativeLast(), p0Before);
         assertGt(pair.price1CumulativeLast(), p1Before);
+    }
+
+    // -------- reentrancy guard --------
+
+    function test_reentrancy_lock_preventsDoubleEntry() public {
+        // Build a fresh pair where one token is malicious: on transfer out of
+        // the pair, it attempts a reentrant swap. The lock modifier must block it.
+        MaliciousERC20 badToken = new MaliciousERC20();
+        MockERC20 goodToken = new MockERC20("Good", "GOOD", 18);
+
+        // Determine sort order so we know which direction to swap.
+        bool badIsToken0 = address(badToken) < address(goodToken);
+        (address t0, address t1) =
+            badIsToken0 ? (address(badToken), address(goodToken)) : (address(goodToken), address(badToken));
+
+        UniswapV2Pair badPair = UniswapV2Pair(factory.createPair(t0, t1));
+        badToken.setPair(address(badPair));
+
+        // Seed liquidity: 100 bad + 400 good (1:4 ratio).
+        badToken.mint(address(badPair), 100 ether);
+        goodToken.mint(address(badPair), 400 ether);
+        badPair.mint(alice);
+
+        // Arm the malicious token: on next transfer out of the pair, it will
+        // attempt a reentrant swap. The lock modifier must reject it.
+        badToken.enableReenter();
+
+        // Send good tokens in, request bad tokens out -> triggers badToken.transfer
+        // -> reentrant swap attempt -> lock must block it.
+        // Request 2 bad out for 10 good in (passes K check at 1:4 ratio).
+        goodToken.mint(address(badPair), 10 ether);
+        if (badIsToken0) {
+            badPair.swap(2 ether, 0, bob); // bad is token0
+        } else {
+            badPair.swap(0, 2 ether, bob); // bad is token1
+        }
+
+        // The outer swap succeeds (it's a legitimate swap), but the reentrancy
+        // must have been blocked by the lock modifier.
+        assertTrue(badToken.reenterAttempted(), "reentrancy was not attempted");
+        assertFalse(badToken.reenterSucceeded(), "reentrancy succeeded - lock failed");
+        // bob received the bad tokens from the legitimate swap
+        assertEq(badToken.balanceOf(bob), 2 ether);
+    }
+
+    // -------- swap INVALID_TO branch --------
+
+    function test_swap_revertsOnInvalidTo() public {
+        _addInitialLiquidity();
+        token0.mint(address(pair), 10 ether);
+        // `to` cannot be either of the pair's underlying tokens.
+        vm.expectRevert(bytes("UniswapV2: INVALID_TO"));
+        pair.swap(0, 10 ether, address(token0));
+    }
+
+    // -------- burn INSUFFICIENT_LIQUIDITY_BURNED branch --------
+
+    function test_burn_revertsOnZeroLiquidity() public {
+        // Mint liquidity so totalSupply > 0 and reserves are set, but do NOT
+        // transfer any LP tokens to the pair. Then balanceOf[pair] == 0, so
+        // amount0 = amount1 = 0 -> INSUFFICIENT_LIQUIDITY_BURNED.
+        _addInitialLiquidity();
+        vm.expectRevert(bytes("UniswapV2: INSUFFICIENT_LIQUIDITY_BURNED"));
+        pair.burn(alice);
     }
 }

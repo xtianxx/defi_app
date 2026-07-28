@@ -41,6 +41,7 @@ contract UniswapV2ERC20Test is Test {
     function test_transfer_works() public {
         uint256 bal = pair.balanceOf(alice);
         vm.prank(alice);
+        // forge-lint: disable-next-line(erc20-unchecked-transfer)
         pair.transfer(bob, bal / 2);
         assertEq(pair.balanceOf(bob), bal / 2);
         assertEq(pair.balanceOf(alice), bal - bal / 2);
@@ -51,6 +52,7 @@ contract UniswapV2ERC20Test is Test {
         vm.prank(alice);
         pair.approve(bob, bal);
         vm.prank(bob);
+        // forge-lint: disable-next-line(erc20-unchecked-transfer)
         pair.transferFrom(alice, bob, bal);
         assertEq(pair.balanceOf(bob), bal);
         assertEq(pair.balanceOf(alice), 0);
