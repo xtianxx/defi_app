@@ -39,7 +39,7 @@ contract UniswapV2Factory is IUniswapV2Factory {
         return keccak256(type(UniswapV2Pair).creationCode);
     }
 
-    function INIT_CODE_PAIR_HASH() external view returns (bytes32) {
+    function INIT_CODE_PAIR_HASH() external pure returns (bytes32) {
         return keccak256(type(UniswapV2Pair).creationCode);
     }
 

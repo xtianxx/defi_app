@@ -7,9 +7,7 @@ const nextConfig = {
     return config;
   },
   // SC-004: portfolio read-heavy — allow route handlers to opt into caching.
-  experimental: {
-    typedRoutes: true,
-  },
+  typedRoutes: true,
   // Transpile shadcn primitives in /src/components/ui
   transpilePackages: [],
 };

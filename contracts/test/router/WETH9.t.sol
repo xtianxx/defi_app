@@ -57,7 +57,7 @@ contract WETH9Test is Test {
     function test_transfer_movesBalance() public {
         vm.startPrank(alice);
         weth.deposit{value: 10 ether}();
-        weth.transfer(bob, 4 ether);
+        assertTrue(weth.transfer(bob, 4 ether), "transfer should succeed");
         vm.stopPrank();
         assertEq(weth.balanceOf(alice), 6 ether);
         assertEq(weth.balanceOf(bob), 4 ether);
@@ -67,6 +67,7 @@ contract WETH9Test is Test {
         vm.startPrank(alice);
         weth.deposit{value: 1 ether}();
         vm.expectRevert(bytes("WETH9: INSUFFICIENT_BALANCE"));
+        /// forge-lint: disable-next-line(erc20-unchecked-transfer)
         weth.transfer(bob, 2 ether);
         vm.stopPrank();
     }
@@ -86,7 +87,7 @@ contract WETH9Test is Test {
         vm.stopPrank();
 
         vm.prank(bob);
-        weth.transferFrom(alice, bob, 3 ether);
+        assertTrue(weth.transferFrom(alice, bob, 3 ether), "transferFrom should succeed");
 
         assertEq(weth.balanceOf(alice), 7 ether);
         assertEq(weth.balanceOf(bob), 3 ether);
@@ -100,6 +101,7 @@ contract WETH9Test is Test {
 
         vm.prank(bob);
         vm.expectRevert(bytes("WETH9: INSUFFICIENT_ALLOWANCE"));
+        /// forge-lint: disable-next-line(erc20-unchecked-transfer)
         weth.transferFrom(alice, bob, 3 ether);
     }
 

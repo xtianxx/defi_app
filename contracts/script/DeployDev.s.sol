@@ -38,8 +38,8 @@ contract DeployDev is Script {
         usdc.mint(deployer, USDC_AMOUNT);
 
         // 6. Transfer tokens to the pair
-        weth.transfer(pair, WETH_AMOUNT);
-        usdc.transfer(pair, USDC_AMOUNT);
+        require(weth.transfer(pair, WETH_AMOUNT), "DeployDev: weth->pair failed");
+        require(usdc.transfer(pair, USDC_AMOUNT), "DeployDev: usdc->pair failed");
 
         // 7. Mint initial liquidity -> LP tokens to deployer
         UniswapV2Pair(pair).mint(deployer);

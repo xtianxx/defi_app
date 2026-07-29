@@ -7,10 +7,10 @@ function makeAddresses(a31337: `0x${string}` | null, a11155111: `0x${string}` | 
 
 // Static metadata; addresses filled in by sync-deploy.
 export const TOKENS = {
-  WETH: { symbol: "WETH" as const, name: "Wrapped Ether", decimals: 18, addressByChain: makeAddresses("0x610178da211fef7d417bc0e6fed39f05609ad788" as `0x${string}`, null) },
-  USDC: { symbol: "USDC" as const, name: "USD Coin", decimals: 6, addressByChain: makeAddresses("0xb7f8bc63bbcad18155201308c8f3540b07f84f5e" as `0x${string}`, null) },
-  DAI:  { symbol: "DAI" as const,  name: "Dai Stablecoin", decimals: 18, addressByChain: makeAddresses(null, null) },
-  WBTC: { symbol: "WBTC" as const, name: "Wrapped BTC",  decimals: 8,  addressByChain: makeAddresses(null, null) },
+  WETH: { symbol: "WETH" as const, name: "Wrapped Ether", decimals: 18, addressByChain: makeAddresses("0xcf7ed3acca5a467e9e704c703e8d87f634fb0fc9" as `0x${string}`, null) },
+  USDC: { symbol: "USDC" as const, name: "USD Coin", decimals: 6, addressByChain: makeAddresses("0x5fbdb2315678afecb367f032d93f642f64180aa3" as `0x${string}`, null) },
+  DAI:  { symbol: "DAI" as const,  name: "Dai Stablecoin", decimals: 18, addressByChain: makeAddresses("0xe7f1725e7734ce288f8367e1bb143e90bb3f0512" as `0x${string}`, null) },
+  WBTC: { symbol: "WBTC" as const, name: "Wrapped BTC",  decimals: 8,  addressByChain: makeAddresses("0x9fe46736679d2d9a65f0992f2272de9f3c7fa6e0" as `0x${string}`, null) },
 };
 
 export const TOKEN_LIST = Object.values(TOKENS);

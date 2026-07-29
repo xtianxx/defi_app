@@ -64,6 +64,22 @@ function findContractAddress(broadcast: BroadcastFile, contractName: string): st
   return ZERO;
 }
 
+/**
+ * Find the Nth (0-indexed) CREATE deployment of `contractName`.
+ * Used to disambiguate multiple MockERC20 deployments (USDC=0, DAI=1, WBTC=2)
+ * which all share the same contractName in the broadcast file.
+ */
+function findNthContractAddress(broadcast: BroadcastFile, contractName: string, index: number): string {
+  let seen = 0;
+  for (const tx of broadcast.transactions ?? []) {
+    if (tx.transactionType === "CREATE" && tx.contractName === contractName && tx.contractAddress) {
+      if (seen === index) return tx.contractAddress;
+      seen++;
+    }
+  }
+  return ZERO;
+}
+
 function buildDeployment(chainId: number): Deployment {
   const broadcast = readBroadcast(chainId);
   if (!broadcast) {
@@ -80,11 +96,11 @@ function buildDeployment(chainId: number): Deployment {
     weth: findContractAddress(broadcast, "WETH9"),
     tokens: {
       WETH: findContractAddress(broadcast, "WETH9"),
-      USDC: findContractAddress(broadcast, "MockERC20"),
-      // Heuristic: later MockERC20 deployments are DAI / WBTC. A future
-      // enhancement is to use the constructor args from the broadcast file.
-      DAI: ZERO,
-      WBTC: ZERO,
+      // DeployDemo deploys MockERC20 in order: USDC, DAI, WBTC.
+      // All three share contractName "MockERC20", so disambiguate by CREATE order.
+      USDC: findNthContractAddress(broadcast, "MockERC20", 0),
+      DAI: findNthContractAddress(broadcast, "MockERC20", 1),
+      WBTC: findNthContractAddress(broadcast, "MockERC20", 2),
     },
   };
 }
