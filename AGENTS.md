@@ -1,30 +1,60 @@
-# Repository Guide for OpenCode
+# PROJECT KNOWLEDGE BASE
 
-This is a monorepo for a DeFi application, split into two independent packages: `contracts/` (Solidity/Foundry) and `frontend/` (React/Vite).
+**Generated:** 2026-08-01
+**Commit:** 6177a81
+**Branch:** 001-uniswap-v2-resume
 
-## Structure
-- `contracts/`: Foundry project for Ethereum smart contracts.
-- `frontend/`: React + TypeScript + Vite frontend.
-- `.specify/`: Feature planning and specs (use `/speckit.*` commands).
-- `.opencode/`: OpenCode-specific configuration and commands.
+## OVERVIEW
+Monorepo for a Uniswap V2–style DEX resume project. Two independent packages — `contracts/` (Foundry; core + router implemented) and `frontend/` (Next.js 15 App Router dApp) — plus `specs/` (authoritative feature docs). The old Vite/`Counter.sol` scaffold is gone; the dev loop lives in root `scripts/`.
 
-## Commands
+## DEV WORKFLOW (use these first)
+| Command | Purpose |
+|---|---|
+| `./scripts/test-unit.sh [--forge-only\|--vitest-only\|--watch]` | forge test -vvv + vitest run (default: both) |
+| `./scripts/test-e2e.sh [--unit-only\|--dev]` | Fresh anvil (31337:8545) → DeployDemo → sync → forge test → vitest → [full] next build + Playwright |
+| `./scripts/dev-deploy.sh [--dev]` | Fresh anvil → deploy demo → sync addresses → verify swap-ready; **anvil stays running**; `--dev` also starts `npm run dev` |
 
-### Frontend (`frontend/`)
-- **Dev server**: `npm run dev`
-- **Build**: `npm run build` (runs `tsc -b && vite build`)
-- **Lint**: `npm run lint`
-- **Preview**: `npm run preview`
+Focused checks: `forge test --match-contract UniswapV2Pair -vvvv` (contracts/) · `npx vitest run tests/unit/<file>` · `npx tsc --noEmit` · `npm run lint` (frontend/).
 
-### Contracts (`contracts/`)
-- **Build**: `forge build`
-- **Test**: `forge test`
-- **Format**: `forge fmt`
-- **Deploy**: `forge script script/Counter.s.sol:CounterScript --rpc-url <rpc> --private-key <key>`
-- **CI Order**: `forge fmt --check` → `forge build --sizes` → `forge test -vvv`
+**After clone:** `forge install` in contracts/ — and install `openzeppelin-contracts` too (in `lib/` + remappings but NOT in `.gitmodules`) · `npm install` in frontend/.
 
-## Key Conventions
-- **No Root `opencode.json`**: Configuration is per-package or via `.opencode/`.
-- **Foundry Libs**: `contracts/lib/` is gitignored; run `forge install` if it's missing.
-- **React Tooling**: Frontend uses `@vitejs/plugin-react` (Oxc-based).
-- **Planning**: Use `/speckit.specify`, `/speckit.plan`, and `/speckit.tasks` to manage features via the `.specify` system.
+## STRUCTURE
+```
+contracts/      Foundry, solc 0.8.19, via_ir, optimizer 200 runs
+  src/core/       UniswapV2Factory/Pair/ERC20; libraries/ Math, SafeMath, UQ112x112
+  src/router/     UniswapV2Router02, WETH9; libraries/ UniswapV2Library, TransferHelper
+  script/         DeployDemo.s.sol ← main demo (Factory+Router+WETH9+4 tokens, 2 seeded pairs)
+frontend/       Next.js 15 App Router · React 19 · TS 6 strict · ethers v6 · tailwind+shadcn · react-query
+  src/app/        /swap /liquidity /portfolio /debug pages + api/reserves/route.ts (server-side RPC reads)
+  src/hooks/      useWeb3, useToken, usePair, useSwap, useLiquidity, useTwapPrice
+  src/lib/        chains.ts (anvil 31337 + Sepolia), rpc.ts, tx.ts, contracts/ (generated bindings)
+  tests/          unit/ (vitest + testing-library, jsdom); e2e/ and load/ are EMPTY
+scripts/        dev-deploy.sh, test-unit.sh, test-e2e.sh — the canonical dev loop
+specs/001-uniswap-v2-resume/   spec.md · plan.md · tasks.md · quickstart.md (runnable guide)
+.github/workflows/test.yml     CI: contracts fmt→build(--sizes)→test; frontend tsc→lint→vitest→build
+.specify/       Speckit planning framework + constitution.md (5 principles; CI gates cite them)
+```
+
+## WHERE TO LOOK
+| Task | Location |
+|---|---|
+| Spec / plan / task breakdown | specs/001-uniswap-v2-resume/{spec,plan,tasks}.md |
+| Runnable validation guide | specs/001-uniswap-v2-resume/quickstart.md |
+| Governing rules (v1.1.0) | .specify/memory/constitution.md |
+| Deploy scripts | contracts/script/DeployDemo.s.sol (+ core/DeployFactory.s.sol, router/DeployRouter.s.sol) |
+| Frontend contract bindings | frontend/src/lib/contracts/ (generated — see GOTCHAS) |
+
+## CONVENTIONS
+- **Packages independent** — no root workspace, no cross-package imports
+- **Tests**: contracts `test/*.t.sol` (`test_*()` / `testFuzz_*()`); frontend `tests/unit/*.test.{ts,tsx}`; `@/` alias → `src/` (tsconfig + vitest)
+- **ethers v6 split**: server reads = JsonRpcProvider in route handlers; client writes = BrowserProvider via Web3Provider context
+- **Generated bindings**: `sync-deploy.ts` overwrites **tracked** `addresses.ts` + `tokens.ts` and ignored `abis.generated.ts` — `forge build` + deploy first, then `node scripts/sync-deploy.ts <chainId>` (auto-finds `broadcast/DeployDemo.s.sol/<chainId>/run-latest.json`)
+- **No .env needed** for the anvil flow — chains/RPC hardcoded in `lib/chains.ts` (Sepolia uses public `rpc.sepolia.org`)
+
+## GOTCHAS
+- **Spec source of truth is `specs/`** — `.omo/specs/` is a partial mirror that diverges; never edit there
+- **dev-deploy.sh leaves anvil running on purpose** (frontend needs the RPC; only failure paths kill it). Broadcasts need `--slow` or they can fail with EIP-1559 fee-estimation timeouts and never deploy
+- **CI e2e job is disabled** (`if: false`) pending wiring of DeployDemo + sync-deploy
+- **Deployer key** = anvil account 0, hardcoded in scripts: `0xac0974…ff80` (WETH+USDC+DAI+LP); accounts #1/#2 available for multi-user testing
+- **Coverage/gas CI gates are conditional**: coverage runs only if `contracts/src/**/*.sol` exists; gas snapshot only with a committed `contracts/.gas-snapshot`
+- **`contracts/broadcast/31337/` is gitignored** — re-run DeployDemo to refresh frontend bindings

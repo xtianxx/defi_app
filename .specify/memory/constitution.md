@@ -2,32 +2,35 @@
 Sync Impact Report
 ==================
 
-Version Change: 0.0.0 → 1.0.0 (MAJOR - Initial constitution creation)
+Version Change: 1.0.0 → 1.1.0 (MINOR - Frontend framework change)
 
 Modified Principles:
-- None (initial creation)
+- None (no principle changes)
 
-Added Sections:
-- Core Principles (5 principles)
-- Technical Standards
-- Quality Gates
-- Governance
-
-Removed Sections:
-- None
+Modified Sections:
+- Technical Standards → Frontend Requirements (Vite → Next.js 15 App Router; React 18+ → React 19)
+  - Rationale: explicit user instruction (`/speckit.plan` arg: "前端部分使用next.js/react")
+  - Trade-offs: adds SSR/Route Handlers for SC-004 < 3s portfolio load; the existing Vite
+    scaffold contained only the default template (no product code), so the migration
+    cost is a scaffold replacement, not a rewrite.
+  - Veto gate (Principle I, security) is unaffected — all other gates PASS.
+- Quality Gates → added `tsc --noEmit` and `next build` to pre-commit chain
+- Version Policy footer bumped to 1.1.0; Last Amended 2026-07-27
 
 Templates Requiring Updates:
-- ✅ .specify/templates/plan-template.md - Constitution Check section aligns with new principles
-- ✅ .specify/templates/spec-template.md - Requirements structure compatible
-- ✅ .specify/templates/tasks-template.md - Task categories align with DeFi development workflow
+- ✅ .specify/templates/plan-template.md - Constitution Check section still aligns
+- ✅ .specify/templates/spec-template.md - No change required
+- ✅ .specify/templates/tasks-template.md - Frontend setup tasks now reference Next.js 15
+  (T004: next@15, react@19, ethers@6, tailwindcss, @radix-ui/*, lucide-react,
+  @tanstack/react-query; T005–T006: Vitest + Playwright + scaffolded src/app/ tree)
 
 Follow-up TODOs:
-- None
+- Plan.md already records this amendment with full justification in its
+  "Constitution Amendment (Vite → Next.js)" section.
 
 Notes:
-- Initial constitution created for Uniswap V2 resume project
-- Principles focused on smart contract security, DeFi compliance, and professional standards
-- Version set to 1.0.0 as initial release
+- MINOR bump per Version Policy: framework change, no breaking core-principle change.
+- Smart contract standards unchanged: Solidity ^0.8.19, Foundry, ≥95% coverage, slither/mythril.
 -->
 
 # Uniswap V2 Resume Project Constitution
@@ -105,11 +108,13 @@ All aspects of the project MUST be fully documented and reproducible:
 
 ### Frontend Requirements
 
-- React 18+ with TypeScript
-- Vite for build tooling
+- React 19 with TypeScript
+- **Next.js 15 (App Router) for build tooling and routing** *(amended 2026-07-27, see Sync Impact Report above — supersedes the original "Vite" requirement per plan.md)*
 - ethers.js v6 for Web3 integration
 - Responsive design with mobile-first approach
 - Error handling for network switching and transaction failures
+- Wallet-interacting components MUST use the `'use client'` directive
+- Read-only RPC calls SHOULD run in Server Components / Route Handlers via a `JsonRpcProvider` for performance (SC-004: portfolio < 3s)
 
 ### Development Workflow
 
@@ -126,8 +131,11 @@ All aspects of the project MUST be fully documented and reproducible:
 - `forge fmt` - Code formatting
 - `forge build --sizes` - Build verification
 - `forge test -vvv` - Test execution
-- Gas snapshot comparison
-- Linting (solhint for Solidity, ESLint for TypeScript)
+- `forge coverage` - ≥ 95% line coverage (Constitution III)
+- `forge snapshot --check` - Gas baseline regression
+- `tsc --noEmit` - TypeScript strict mode (noUnusedLocals, noUnusedParameters, erasableSyntaxOnly, verbatimModuleSyntax)
+- `npm run lint` - ESLint 10 flat config (js + tseslint + react-hooks + react-refresh)
+- `next build` - Next.js production build (catches route-level errors)
 
 ### Pre-Deployment Checklist
 
@@ -162,4 +170,4 @@ This constitution establishes the foundational principles for the Uniswap V2 res
 - Gas optimization reviews for core operations
 - Documentation updates required for feature additions
 
-**Version**: 1.0.0 | **Ratified**: 2026-07-23 | **Last Amended**: 2026-07-23
+**Version**: 1.1.0 | **Ratified**: 2026-07-23 | **Last Amended**: 2026-07-27

@@ -1,11 +1,15 @@
-# React
+# React (Next.js)
 frontend/node_modules/
-frontend/dist/
+frontend/.next/
+frontend/out/
 
 # Foundry
 contracts/lib/
 contracts/out/
 contracts/cache/
+contracts/broadcast/*/31337/
+contracts/broadcast/**/dry-run/
+contracts/coverage/
 
 # Environment
 .env
@@ -17,3 +21,6 @@ contracts/cache/
 # OS
 .DS_Store
 Thumbs.db
+
+# log
+.anvil.log
