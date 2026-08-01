@@ -97,7 +97,7 @@ describe("usePair", () => {
     // Regression: ActivePositions treats lpBalance === null as "loading" and
     // renders a skeleton row. For pairs without a pool, usePair previously
     // reset lpBalance to null forever → permanent blank skeleton rows.
-    setupFactory(async () => ZeroAddress);
+    setupFactory(async () => ZeroAddress as `0x${string}`);
     const { result } = renderHook(() => usePair(TOKEN_A, TOKEN_B));
 
     await waitFor(() => expect(result.current.lpBalance).toBe(0n));
