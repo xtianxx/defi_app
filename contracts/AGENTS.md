@@ -1,45 +1,36 @@
 # CONTRACTS — Foundry + Solidity
 
-**Generated:** 2026-07-26
+**Generated:** 2026-08-01
 
 ## OVERVIEW
-Foundry project for Uniswap V2–style DEX smart contracts. Currently a minimal Counter scaffold; real contracts pending per `specs/001-uniswap-v2-resume/plan.md`.
+Foundry package for the Uniswap V2 DEX: core (Factory/Pair/ERC20) and router (Router02/WETH9) are implemented per `specs/001-uniswap-v2-resume/`. Solc 0.8.19, via_ir, optimizer 200 runs.
 
 ## STRUCTURE
 ```
-contracts/
-├── src/
-│   ├── Counter.sol        # Example contract (placeholder)
-│   ├── interfaces/         # [EMPTY] — scaffolded for UniswapV2 interfaces
-│   └── libraries/          # [EMPTY] — scaffolded for Math/UQ112x112
-├── test/Counter.t.sol      # Foundry tests (*.t.sol convention)
-├── script/Counter.s.sol    # Deploy scripts (*.s.sol convention)
-├── .github/workflows/      # ⚠️ Misplaced — needs root .github/
-├── lib/                    # Git submodules (gitignored: forge-std, openzeppelin)
-└── foundry.toml
+src/core/           UniswapV2Factory, UniswapV2Pair, UniswapV2ERC20
+src/core/interfaces/  IUniswapV2*
+src/core/libraries/   Math, SafeMath, UQ112x112
+src/router/         UniswapV2Router02, WETH9
+src/router/interfaces/ IERC20, IUniswapV2Router02, IWETH
+src/router/libraries/  UniswapV2Library, TransferHelper
+test/               core/ + router/ ({Contract}.t.sol), mocks/ (MockERC20, MaliciousERC20), utils/ (ErrorSelectors, TestHelpers)
+script/             DeployDemo.s.sol (main demo — Factory+Router+WETH9+4 tokens, 2 seeded pairs), DeployDev.s.sol, core/DeployFactory.s.sol, router/DeployRouter.s.sol
+lib/                forge-std + openzeppelin-contracts (gitignored)
 ```
 
-## WHERE TO LOOK
-| Task | Location | Notes |
-|------|----------|-------|
-| Main contract | src/Counter.sol | Only contract; 14-line example |
-| Tests | test/Counter.t.sol | Forge test; imports forge-std/Test.sol |
-| Deploy script | script/Counter.s.sol | forge script entry; imports forge-std/Script.sol |
-| Foundry config | foundry.toml | Default profile; no optimizer/evm_version set |
-| CI | .github/workflows/test.yml | ⚠️ Won't run — move to root .github/workflows/ |
-| Dependencies | .gitmodules | forge-std v1.16.2; OZ in lib/ but not tracked |
+## COMMANDS
+- **Build**: `forge build` (via_ir; `--sizes` in CI) | **Test**: `forge test -vvv`; focused: `forge test --match-contract UniswapV2Pair -vvvv`
+- **Format**: `forge fmt` (line_length 120, double quotes, no bracket spacing); CI enforces `forge fmt --check` first
+- **Deploy demo**: `forge script script/DeployDemo.s.sol:DeployDemo --rpc-url <rpc> --broadcast --slow --private-key <key> -vvv`
+- **Full local loop**: `../scripts/test-e2e.sh` (fresh anvil + deploy + sync + tests) or `../scripts/dev-deploy.sh` (leaves anvil running for the frontend)
 
 ## CONVENTIONS
-- **Compiler**: pragma solidity ^0.8.13
-- **Test framework**: forge-std v1.16.2 (Test, StdAssertions, StdCheats)
-- **Test naming**: `{Contract}Test is Test`; `test_*()` unit, `testFuzz_*()` fuzz
-- **Deploy scripts**: `{Contract}Script is Script` with `run()` entry
-- **Format**: `forge fmt`; CI: `forge fmt --check`
-- **Build**: `forge build --sizes` (contract size check in CI)
-- **CI order**: fmt --check → build --sizes → test -vvv
+- pragma ^0.8.19; forge-std Test/StdAssertions/StdCheats; `test_*()` unit, `testFuzz_*()` fuzz
+- Deploy scripts `{Name}Script is Script` with `run()`
+- CI order: fmt --check → build --sizes → test -vvv (root `.github/workflows/test.yml` — moved out of contracts/)
 
-## NOTES
-- **lib/ is gitignored**: Run `forge install` after clone
-- **OpenZeppelin**: Present in lib/ but NOT in .gitmodules
-- **CI is misplaced**: Move to `../.github/workflows/test.yml`
-- **interfaces/ and libraries/ are empty**: Intended for Uniswap V2 core per plan.md
+## GOTCHAS
+- **lib/ is gitignored**; `.gitmodules` tracks forge-std ONLY — `openzeppelin-contracts` is already in `lib/` + `remappings.txt` but must be re-installed (`forge install openzeppelin-contracts`) after a fresh clone
+- **Broadcast needs `--slow`** against anvil — without it, EIP-1559 fee-estimation timeouts can make the simulation succeed while the contracts never actually deploy
+- **`broadcast/31337/` is gitignored** — re-run DeployDemo to refresh frontend bindings via sync-deploy
+- No fork tests: `forge test` is self-contained (no anvil required)

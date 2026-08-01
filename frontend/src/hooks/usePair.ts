@@ -40,22 +40,54 @@ export function usePair(tokenA: `0x${string}` | null | undefined, tokenB: `0x${s
   const [liquidity, setLiquidity] = useState<bigint | null>(null);
   const [lpBalance, setLpBalance] = useState<bigint | null>(null);
 
+  // Clear every field — used on all "no pair / precondition failed" paths so
+  // stale data from a previous pair/account doesn't leak into the next render.
+  // Without this, lpBalance/liquidity/token0/1 stay populated after switching
+  // to a non-existent pair or a different account, which makes ActivePositions
+  // show skeleton rows forever or display the previous user's positions.
+  const resetState = useCallback(() => {
+    setPairAddress(null);
+    setToken0(null);
+    setToken1(null);
+    setReserves(null);
+    setPrice0CumulativeLast(null);
+    setPrice1CumulativeLast(null);
+    setLiquidity(null);
+    setLpBalance(null);
+  }, []);
+
+  // The pair definitively does NOT exist on-chain. Same clears as resetState,
+  // but lpBalance/liquidity become 0n instead of null: consumers must be able
+  // to distinguish "no position here" (0n) from "still loading / unknown"
+  // (null) — otherwise ActivePositions renders a permanent skeleton row.
+  const noPairState = useCallback(() => {
+    setPairAddress(null);
+    setToken0(null);
+    setToken1(null);
+    setReserves(null);
+    setPrice0CumulativeLast(null);
+    setPrice1CumulativeLast(null);
+    setLiquidity(0n);
+    setLpBalance(0n);
+  }, []);
+
   const refresh = useCallback(async () => {
     if (!tokenA || !tokenB || !provider || chainId === null) {
-      setPairAddress(null);
+      resetState();
       return;
     }
     const deployment = getDeployment(chainId);
     if (!deployment || !isValidAddress(deployment.factory)) {
-      setPairAddress(null);
+      resetState();
       return;
     }
     const factory = new Contract(deployment.factory, IUniswapV2Factory_ABI, provider);
     try {
       const addr = (await factory.getPair(tokenA, tokenB)) as `0x${string}`;
       if (addr === ZeroAddress) {
-        setPairAddress(null);
-        setReserves(null);
+        // No pool exists for this pair — lpBalance 0n, NOT null, so
+        // ActivePositions doesn't render a permanent skeleton row.
+        noPairState();
         return;
       }
       setPairAddress(addr);
@@ -82,9 +114,9 @@ export function usePair(tokenA: `0x${string}` | null | undefined, tokenB: `0x${s
       setLiquidity(supply as bigint);
       setLpBalance(bal as bigint);
     } catch {
-      setPairAddress(null);
+      resetState();
     }
-  }, [tokenA, tokenB, provider, chainId, account]);
+  }, [tokenA, tokenB, provider, chainId, account, resetState, noPairState]);
 
   useEffect(() => {
     refresh();

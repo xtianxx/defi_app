@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { BrowserProvider, JsonRpcSigner, type Eip1193Provider } from "ethers";
 import { CHAINS, isSupportedChain, type ChainConfig } from "@/lib/chains";
 import { decodeError } from "@/lib/errors";
@@ -17,7 +17,7 @@ export interface Web3ContextValue {
   error: { code: string; message: string } | null;
   connect: () => Promise<void>;
   switchChain: (chainId: number) => Promise<void>;
-  disconnect: () => void;
+  disconnect: () => Promise<void>;
 }
 
 const noop = () => {};
@@ -112,6 +112,30 @@ export function Web3Provider({ children }: { children: ReactNode }) {
     ethereum.on("chainChanged", onChainChanged as never);
     ethereum.on("disconnect", onDisconnect as never);
 
+    // Silent auto-reconnect on mount/refresh: read already-authorized accounts
+    // via `eth_accounts` (NO user prompt, unlike `eth_requestAccounts`).
+    // If the wallet has a permitted account, restore the session so a page
+    // refresh doesn't drop the user back to "Connect wallet". If none, stay
+    // idle — the explicit connect() path handles first-time authorization.
+    const silentReconnect = async () => {
+      try {
+        const accounts = (await ethereum.request({ method: "eth_accounts" })) as string[];
+        if (!accounts || accounts.length === 0) return; // never authorized → stay idle
+        const browserProvider = new BrowserProvider(ethereum as never, "any");
+        const newSigner = await browserProvider.getSigner();
+        const net = await browserProvider.getNetwork();
+        setProvider(browserProvider);
+        setSigner(newSigner);
+        setAccount(accounts[0] as `0x${string}`);
+        setChainId(Number(net.chainId));
+        setStatus("ready");
+      } catch {
+        // Silent reconnect is best-effort; on failure fall back to idle so
+        // the user can explicitly connect via the button.
+      }
+    };
+    void silentReconnect();
+
     return () => {
       if (!ethereum.removeListener) return;
       ethereum.removeListener("accountsChanged", onAccountsChanged as never);
@@ -194,12 +218,33 @@ export function Web3Provider({ children }: { children: ReactNode }) {
     }
   };
 
-  const disconnect = () => {
+  const disconnect = useCallback(async () => {
+    const wasConnected = account !== null;
+    // Clear local state FIRST so the UI disconnects immediately — the revoke
+    // below may open a wallet confirmation popup.
     setAccount(null);
     setSigner(null);
+    setProvider(null);
     setStatus("idle");
     setError(null);
-  };
+
+    // Best-effort revoke of the site's account permission (EIP-2255
+    // `wallet_revokePermissions`). Without this, MetaMask keeps the site
+    // permission and the next page load silently reconnects via eth_accounts,
+    // making "Disconnect" session-only. Wallets that don't support the method
+    // throw — the local disconnect above already happened, so just log.
+    if (!wasConnected) return;
+    const ethereum = getInjectedEthereum();
+    if (!ethereum) return;
+    try {
+      await ethereum.request({
+        method: "wallet_revokePermissions",
+        params: [{ eth_accounts: {} }],
+      });
+    } catch (err) {
+      console.warn("[Web3Provider] wallet_revokePermissions failed:", err);
+    }
+  }, [account]);
 
   const value: Web3ContextValue = useMemo(
     () => ({
@@ -214,7 +259,7 @@ export function Web3Provider({ children }: { children: ReactNode }) {
       switchChain,
       disconnect,
     }),
-    [status, account, chainId, chain, provider, signer, error],
+    [status, account, chainId, chain, provider, signer, error, disconnect],
   );
 
   return <Web3Context.Provider value={value}>{children}</Web3Context.Provider>;
@@ -235,7 +280,7 @@ export function useWeb3Context(): Web3ContextValue {
       error: null,
       connect: async () => noop(),
       switchChain: async () => noop(),
-      disconnect: () => noop(),
+      disconnect: async () => noop(),
     };
   }
   return ctx;

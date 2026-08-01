@@ -11,7 +11,12 @@ export function formatTokenAmount(value: bigint | null | undefined, decimals: nu
 
 export function parseTokenAmount(value: string, decimals: number): bigint {
   if (!value || value.trim() === "") return 0n;
-  return ethersParseUnits(value.trim(), decimals);
+  const cleaned = value.trim().replace(/,/g, ".");
+  try {
+    return ethersParseUnits(cleaned, decimals);
+  } catch {
+    return 0n;
+  }
 }
 
 /**

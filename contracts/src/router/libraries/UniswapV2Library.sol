@@ -75,4 +75,14 @@ library UniswapV2Library {
         uint256 denominator = (reserveOut - amountOut) * 997;
         amountIn = (numerator / denominator) + 1;
     }
+
+    /// @notice Compute the equivalent amount of tokenB for a given amount of tokenA at the
+    ///         current pool ratio (no fees, no slippage — purely the constant-product quote).
+    /// @dev Formula: `amountB = amountA * reserveB / reserveA`.
+    ///      Reverts if `amountA == 0` or either reserve is zero.
+    function quote(uint256 amountA, uint256 reserveA, uint256 reserveB) internal pure returns (uint256 amountB) {
+        require(amountA > 0, "UniswapV2Library: INSUFFICIENT_AMOUNT");
+        require(reserveA > 0 && reserveB > 0, "UniswapV2Library: INSUFFICIENT_LIQUIDITY");
+        amountB = amountA * reserveB / reserveA;
+    }
 }

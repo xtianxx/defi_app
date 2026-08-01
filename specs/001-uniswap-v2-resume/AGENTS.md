@@ -1,6 +1,6 @@
 # FEATURE SPEC — 001-uniswap-v2-resume
 
-**Generated:** 2026-07-27
+**Generated:** 2026-08-01
 
 ## OVERVIEW
 Authoritative spec + plan + tasks for the Uniswap V2 resume feature. Markdown docs — NOT code.
@@ -35,6 +35,6 @@ specs/001-uniswap-v2-resume/
 - **AUTHORITATIVE**: This `specs/` copy is the source of truth. `.omo/specs/001-uniswap-v2-resume/`
   is a PARTIAL mirror (missing spec.md, tasks.md, checklists/) and `plan.md` DIVERGES —
   always edit here, never `.omo/specs/`.
-- **Compiler version**: plan.md specifies Solidity ^0.8.19 (constitution); current Counter.sol
-  uses ^0.8.13 — bump when real contracts land.
-- **Frontend migration**: plan.md specifies Next.js 15 App Router; current frontend is still Vite.
+- **Compiler version**: contracts use Solidity ^0.8.19 (constitution) — done.
+- **Frontend migration**: Vite → Next.js 15 App Router — done; frontend also gained ethers v6,
+  tailwind + shadcn/ui, vitest + Playwright.

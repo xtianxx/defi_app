@@ -12,8 +12,14 @@ import {MockERC20} from "../test/mocks/MockERC20.sol";
 /// @notice Deploys the full demo stack: MockERC20 tokens (USDC, DAI, WBTC), real WETH9, Factory,
 ///         Router02, creates WETH/USDC + WETH/DAI pairs, and seeds initial liquidity MANUALLY
 ///         (the Router's `addLiquidityETH` is a stub in Phase 3, so we transfer + mint directly).
+///         Funds multiple anvil test accounts for multi-user E2E testing.
 ///         Run: `forge script script/DeployDemo.s.sol --rpc-url $RPC --broadcast --private-key $KEY`
 contract DeployDemo is Script {
+    // Deterministic anvil test accounts (preseeded with 10000 ETH each by anvil).
+    // Account #0 = msg.sender (deployer); #1 = LP provider B; #2 = swapper.
+    address constant TEST_ACCOUNT_1 = 0x70997970C51812dc3A010C7d01b50e0d17dc79C8;
+    address constant TEST_ACCOUNT_2 = 0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC;
+
     // Seed amounts for WETH/USDC: 100 WETH + 200,000 USDC => price ~2000 USDC/WETH.
     // Large enough that a 1 WETH swap (~1% of pool) won't trigger slippage issues.
     uint256 constant WETH_USDC_WETH = 100 ether;
@@ -28,6 +34,11 @@ contract DeployDemo is Script {
     uint256 constant DEPLOYER_WETH = 100 ether;
     uint256 constant DEPLOYER_USDC = 50_000 * 10 ** 6;
     uint256 constant DEPLOYER_DAI = 50_000 * 10 ** 18;
+
+    // Test accounts get enough to add liquidity or swap.
+    uint256 constant TESTER_WETH = 20 ether;
+    uint256 constant TESTER_TOKEN = 20_000 * 10 ** 18;
+    uint256 constant TESTER_USDC = 20_000 * 10 ** 6;
 
     function run() external {
         address deployer = msg.sender;
@@ -54,6 +65,17 @@ contract DeployDemo is Script {
         dai.mint(deployer, WETH_DAI_DAI + DEPLOYER_DAI);
         // WBTC is deployed for ABI/frontend parity but not seeded into a pair in this demo.
         wbtc.mint(deployer, 100 * 10 ** 8);
+
+        // 4b. Fund test accounts for multi-user E2E testing.
+        //     Account #1 — LP provider B (adds to an existing pool, verifies share dilution).
+        usdc.mint(TEST_ACCOUNT_1, TESTER_USDC);
+        dai.mint(TEST_ACCOUNT_1, TESTER_TOKEN);
+        wbtc.mint(TEST_ACCOUNT_1, TESTER_USDC);
+        //    Account #2 — swapper (buys & sells without providing liquidity).
+        weth.deposit{value: TESTER_WETH}();
+        require(weth.transfer(TEST_ACCOUNT_2, TESTER_WETH), "DeployDemo: weth->account2 failed");
+        usdc.mint(TEST_ACCOUNT_2, TESTER_USDC);
+        dai.mint(TEST_ACCOUNT_2, TESTER_TOKEN);
 
         // 5. Seed liquidity MANUALLY (router.addLiquidityETH is a stub in Phase 3).
         //    WETH/USDC pair.
@@ -87,5 +109,7 @@ contract DeployDemo is Script {
         (uint112 d0, uint112 d1,) = UniswapV2Pair(pairWethDai).getReserves();
         console.log("WETH/DAI reserve0:", d0);
         console.log("WETH/DAI reserve1:", d1);
+        console.log("TestAccount1 (LP B):", TEST_ACCOUNT_1);
+        console.log("TestAccount2 (swapper):", TEST_ACCOUNT_2);
     }
 }

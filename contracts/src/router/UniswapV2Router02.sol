@@ -224,7 +224,10 @@ contract UniswapV2Router02 is IUniswapV2Router02 {
     // Liquidity — stubs (Phase 4 / US2 and Phase 5 / US3)
     // ---------------------------------------------------------------------------------------------
 
-    /// @dev Internal liquidity sizing — NOT implemented in Phase 3.
+    /// @dev Compute optimal deposit amounts for a token/token pair (or token/WETH).
+    ///      If the pair does not yet exist, it is created first. For existing pairs, the
+    ///      amounts are adjusted to match the pool's current ratio so that the deposit is
+    ///      as capital-efficient as possible while respecting the caller's slippage bounds.
     function _addLiquidity(
         address tokenA,
         address tokenB,
@@ -233,11 +236,33 @@ contract UniswapV2Router02 is IUniswapV2Router02 {
         uint256 amountAMin,
         uint256 amountBMin
     ) internal returns (uint256 amountA, uint256 amountB) {
-        (tokenA, tokenB, amountADesired, amountBDesired, amountAMin, amountBMin);
-        revert("Not implemented");
+        // Create the pair if it doesn't exist yet.
+        if (IUniswapV2Factory(factory).getPair(tokenA, tokenB) == address(0)) {
+            IUniswapV2Factory(factory).createPair(tokenA, tokenB);
+        }
+
+        (uint256 reserveA, uint256 reserveB) = UniswapV2Library.getReserves(factory, tokenA, tokenB);
+
+        if (reserveA == 0 && reserveB == 0) {
+            // First liquidity provider — use desired amounts as-is.
+            (amountA, amountB) = (amountADesired, amountBDesired);
+        } else {
+            uint256 amountBOptimal = UniswapV2Library.quote(amountADesired, reserveA, reserveB);
+            if (amountBOptimal <= amountBDesired) {
+                (amountA, amountB) = (amountADesired, amountBOptimal);
+            } else {
+                uint256 amountAOptimal = UniswapV2Library.quote(amountBDesired, reserveB, reserveA);
+                (amountA, amountB) = (amountAOptimal, amountBDesired);
+            }
+        }
+
+        require(amountA >= amountAMin, "UniswapV2Router: INSUFFICIENT_A_AMOUNT");
+        require(amountB >= amountBMin, "UniswapV2Router: INSUFFICIENT_B_AMOUNT");
     }
 
-    /// @notice Add liquidity to a token/token pair — STUB (Phase 4 / US2).
+    /// @notice Add liquidity to a token/token pair. Transfers tokens from the caller to the
+    ///         pair, then mints LP tokens to `to`. Slippage is bounded by `amountAMin` /
+    ///         `amountBMin` (the minimum amounts the caller is willing to deposit).
     function addLiquidity(
         address tokenA,
         address tokenB,
@@ -248,11 +273,16 @@ contract UniswapV2Router02 is IUniswapV2Router02 {
         address to,
         uint256 deadline
     ) external ensure(deadline) returns (uint256 amountA, uint256 amountB, uint256 liquidity) {
-        (tokenA, tokenB, amountADesired, amountBDesired, amountAMin, amountBMin, to, deadline);
-        revert("Not implemented");
+        (amountA, amountB) = _addLiquidity(tokenA, tokenB, amountADesired, amountBDesired, amountAMin, amountBMin);
+        address pair = UniswapV2Library.pairFor(factory, tokenA, tokenB);
+        TransferHelper.safeTransferFrom(tokenA, msg.sender, pair, amountA);
+        TransferHelper.safeTransferFrom(tokenB, msg.sender, pair, amountB);
+        liquidity = IUniswapV2Pair(pair).mint(to);
     }
 
-    /// @notice Add liquidity to a token/ETH pair — STUB (Phase 4 / US2).
+    /// @notice Add liquidity to a token/ETH pair. The caller sends ETH via `msg.value`;
+    ///         excess ETH beyond `amountETH` is refunded. Wraps the required ETH to WETH
+    ///         before transferring it to the pair.
     function addLiquidityETH(
         address token,
         uint256 amountTokenDesired,
@@ -261,8 +291,17 @@ contract UniswapV2Router02 is IUniswapV2Router02 {
         address to,
         uint256 deadline
     ) external payable ensure(deadline) returns (uint256 amountToken, uint256 amountETH, uint256 liquidity) {
-        (token, amountTokenDesired, amountTokenMin, amountETHMin, to, deadline);
-        revert("Not implemented");
+        (amountToken, amountETH) =
+            _addLiquidity(token, WETH, amountTokenDesired, msg.value, amountTokenMin, amountETHMin);
+        address pair = UniswapV2Library.pairFor(factory, token, WETH);
+        TransferHelper.safeTransferFrom(token, msg.sender, pair, amountToken);
+        IWETH(WETH).deposit{value: amountETH}();
+        TransferHelper.safeTransfer(WETH, pair, amountETH);
+        liquidity = IUniswapV2Pair(pair).mint(to);
+        // Refund any unused ETH.
+        if (msg.value > amountETH) {
+            TransferHelper.safeTransferETH(msg.sender, msg.value - amountETH);
+        }
     }
 
     /// @notice Remove liquidity from a token/token pair — STUB (Phase 5 / US3).
@@ -274,7 +313,7 @@ contract UniswapV2Router02 is IUniswapV2Router02 {
         uint256 amountBMin,
         address to,
         uint256 deadline
-    ) external ensure(deadline) returns (uint256 amountA, uint256 amountB) {
+    ) external view ensure(deadline) returns (uint256, uint256) {
         (tokenA, tokenB, liquidity, amountAMin, amountBMin, to, deadline);
         revert("Not implemented");
     }
@@ -287,7 +326,7 @@ contract UniswapV2Router02 is IUniswapV2Router02 {
         uint256 amountETHMin,
         address to,
         uint256 deadline
-    ) external ensure(deadline) returns (uint256 amountToken, uint256 amountETH) {
+    ) external view ensure(deadline) returns (uint256, uint256) {
         (token, liquidity, amountTokenMin, amountETHMin, to, deadline);
         revert("Not implemented");
     }
@@ -305,7 +344,7 @@ contract UniswapV2Router02 is IUniswapV2Router02 {
         uint8 v,
         bytes32 r,
         bytes32 s
-    ) external ensure(deadline) returns (uint256 amountA, uint256 amountB) {
+    ) external view ensure(deadline) returns (uint256, uint256) {
         (tokenA, tokenB, liquidity, amountAMin, amountBMin, to, deadline, approveMax, v, r, s);
         revert("Not implemented");
     }
@@ -322,7 +361,7 @@ contract UniswapV2Router02 is IUniswapV2Router02 {
         uint8 v,
         bytes32 r,
         bytes32 s
-    ) external ensure(deadline) returns (uint256 amountToken, uint256 amountETH) {
+    ) external view ensure(deadline) returns (uint256, uint256) {
         (token, liquidity, amountTokenMin, amountETHMin, to, deadline, approveMax, v, r, s);
         revert("Not implemented");
     }

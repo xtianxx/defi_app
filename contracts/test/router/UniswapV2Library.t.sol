@@ -15,7 +15,7 @@ contract LibraryHarness {
         return UniswapV2Library.sortTokens(a, b);
     }
 
-    function pairFor(address factory, address a, address b) external view returns (address) {
+    function pairFor(address factory, address a, address b) external pure returns (address) {
         return UniswapV2Library.pairFor(factory, a, b);
     }
 

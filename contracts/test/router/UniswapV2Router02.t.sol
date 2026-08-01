@@ -8,6 +8,7 @@ import {UniswapV2Pair} from "../../src/core/UniswapV2Pair.sol";
 import {WETH9} from "../../src/router/WETH9.sol";
 import {MockERC20} from "../mocks/MockERC20.sol";
 import {UniswapV2Library} from "../../src/router/libraries/UniswapV2Library.sol";
+import {Math} from "../../src/core/libraries/Math.sol";
 
 /// @title UniswapV2Router02Test — swap entrypoints (Phase 3 / US1).
 /// @notice Liquidity ops are stubs and tested only for revert; swap paths are direct-pair only.
@@ -342,23 +343,183 @@ contract UniswapV2Router02Test is Test {
     }
 
     // ---------------------------------------------------------------------------------------------
-    // Liquidity stubs — must revert "Not implemented"
+    // addLiquidity — Phase 4 / US2
     // ---------------------------------------------------------------------------------------------
 
-    function test_addLiquidity_isStub() public {
-        address[] memory path = new address[](2);
-        path[0] = address(usdc);
-        path[1] = address(dai);
+    function test_addLiquidity_succeeds_proportional() public {
+        uint256 amountADesired = 1000e6; // 1000 USDC
+        uint256 amountBDesired = 1000e18; // 1000 DAI
+        // pool ratio is 1:1 so desired amounts are already proportional
+
+        uint256 usdcBefore = usdc.balanceOf(trader);
+        uint256 daiBefore = dai.balanceOf(trader);
+        (uint256 reserveA0, uint256 reserveB0) =
+            UniswapV2Library.getReserves(address(factory), address(usdc), address(dai));
+
         vm.prank(trader);
-        vm.expectRevert(bytes("Not implemented"));
-        router.addLiquidity(address(usdc), address(dai), 100e6, 100e18, 0, 0, trader, DEADLINE);
+        (uint256 amountA, uint256 amountB, uint256 liquidity) =
+            router.addLiquidity(address(usdc), address(dai), amountADesired, amountBDesired, 0, 0, trader, DEADLINE);
+
+        // Proportional adjustment — both amounts used as-is since ratio matches
+        assertEq(amountA, amountADesired, "amountA should match desired");
+        assertEq(amountB, amountBDesired, "amountB should match desired");
+        assertTrue(liquidity > 0, "liquidity should be > 0");
+
+        // Balances decrease
+        assertEq(usdc.balanceOf(trader), usdcBefore - amountA, "USDC balance should decrease");
+        assertEq(dai.balanceOf(trader), daiBefore - amountB, "DAI balance should decrease");
+
+        // Reserves increase
+        (uint256 reserveA1, uint256 reserveB1) =
+            UniswapV2Library.getReserves(address(factory), address(usdc), address(dai));
+        assertEq(reserveA1 - reserveA0, amountA, "USDC reserve should increase by amountA");
+        assertEq(reserveB1 - reserveB0, amountB, "DAI reserve should increase by amountB");
     }
 
-    function test_addLiquidityETH_isStub() public {
+    function test_addLiquidity_firstProvider() public {
+        MockERC20 tokenA = new MockERC20("TokenA", "TKNA", 18);
+        MockERC20 tokenB = new MockERC20("TokenB", "TKNB", 18);
+
+        uint256 amountADesired = 1 ether;
+        uint256 amountBDesired = 2 ether;
+
+        // Fund and approve trader for the new tokens
+        tokenA.mint(trader, amountADesired);
+        tokenB.mint(trader, amountBDesired);
+        vm.startPrank(trader);
+        tokenA.approve(address(router), type(uint256).max);
+        tokenB.approve(address(router), type(uint256).max);
+        vm.stopPrank();
+
+        // Factory should not have a pair for these tokens yet
+        assertEq(factory.getPair(address(tokenA), address(tokenB)), address(0), "pair should not exist yet");
+
         vm.prank(trader);
-        vm.expectRevert(bytes("Not implemented"));
-        router.addLiquidityETH{value: 1 ether}(address(usdc), 100e6, 0, 0, trader, DEADLINE);
+        (uint256 amountA, uint256 amountB, uint256 liquidity) = router.addLiquidity(
+            address(tokenA), address(tokenB), amountADesired, amountBDesired, 0, 0, trader, DEADLINE
+        );
+
+        // First provider: amounts used as-is
+        assertEq(amountA, amountADesired, "amountA should match desired");
+        assertEq(amountB, amountBDesired, "amountB should match desired");
+
+        // LP = sqrt(amountA * amountB) - MINIMUM_LIQUIDITY
+        uint256 expectedLiquidity = Math.sqrt(amountA * amountB) - 1000;
+        assertEq(liquidity, expectedLiquidity, "liquidity should match expected formula");
+
+        // Pair should now exist (created inside _addLiquidity)
+        address pairAddr = factory.getPair(address(tokenA), address(tokenB));
+        assertTrue(pairAddr != address(0), "pair should exist after addLiquidity");
+
+        // MINIMUM_LIQUIDITY burned to address(0)
+        assertEq(
+            UniswapV2Pair(pairAddr).totalSupply(), liquidity + 1000, "totalSupply should include MINIMUM_LIQUIDITY"
+        );
+        assertEq(UniswapV2Pair(pairAddr).balanceOf(address(0)), 1000, "MINIMUM_LIQUIDITY should be at address(0)");
     }
+
+    function test_addLiquidity_revertsOnSlippageA() public {
+        uint256 amountADesired = 1000e6;
+        uint256 amountBDesired = 1000e18;
+        // Pool ratio is 1:1, so amountA will be 1000e6; set min higher to fail
+        uint256 amountAMin = amountADesired + 1;
+
+        vm.prank(trader);
+        vm.expectRevert(bytes("UniswapV2Router: INSUFFICIENT_A_AMOUNT"));
+        router.addLiquidity(
+            address(usdc), address(dai), amountADesired, amountBDesired, amountAMin, 0, trader, DEADLINE
+        );
+    }
+
+    function test_addLiquidity_revertsOnSlippageB() public {
+        uint256 amountADesired = 1000e6;
+        uint256 amountBDesired = 1000e18;
+        // Pool ratio is 1:1, so amountB will be 1000e18; set min higher to fail
+        uint256 amountBMin = amountBDesired + 1;
+
+        vm.prank(trader);
+        vm.expectRevert(bytes("UniswapV2Router: INSUFFICIENT_B_AMOUNT"));
+        router.addLiquidity(
+            address(usdc), address(dai), amountADesired, amountBDesired, 0, amountBMin, trader, DEADLINE
+        );
+    }
+
+    function test_addLiquidity_asymmetricAdjustment() public {
+        uint256 amountADesired = 1000e6; // 1000 USDC
+        uint256 amountBDesired = 100e18; // only 100 DAI (unbalanced vs 1:1 pool ratio)
+
+        uint256 usdcBefore = usdc.balanceOf(trader);
+        uint256 daiBefore = dai.balanceOf(trader);
+
+        vm.prank(trader);
+        (uint256 amountA, uint256 amountB, uint256 liquidity) =
+            router.addLiquidity(address(usdc), address(dai), amountADesired, amountBDesired, 0, 0, trader, DEADLINE);
+
+        // System should adjust to the constraining side (DAI is the constraint)
+        assertTrue(amountA <= amountADesired, "amountA should be <= amountADesired");
+        assertTrue(amountB <= amountBDesired, "amountB should be <= amountBDesired");
+        assertTrue(liquidity > 0, "liquidity should be > 0");
+
+        // Since DAI (100e18) is less than the optimal ratio requires for 1000 USDC,
+        // amountB should equal amountBDesired and amountA should be adjusted down.
+        // amountA = quote(100e18, 10000e18, 10000e6) = 100e6
+        assertEq(amountB, amountBDesired, "amountB should match constraining DAI desired");
+        assertEq(amountA, 100e6, "amountA should be adjusted down to 100 USDC");
+
+        // Check balances
+        assertEq(usdc.balanceOf(trader), usdcBefore - amountA);
+        assertEq(dai.balanceOf(trader), daiBefore - amountB);
+    }
+
+    function test_addLiquidityETH_succeeds() public {
+        uint256 amountTokenDesired = 1000e6; // 1000 USDC
+        uint256 msgValue = 1 ether; // send extra to test refund
+
+        uint256 usdcBefore = usdc.balanceOf(trader);
+        uint256 ethBefore = trader.balance;
+        (uint256 reserveToken0, uint256 reserveEth0) =
+            UniswapV2Library.getReserves(address(factory), address(usdc), address(weth));
+
+        vm.prank(trader);
+        (uint256 amountToken, uint256 amountETH, uint256 liquidity) =
+            router.addLiquidityETH{value: msgValue}(address(usdc), amountTokenDesired, 0, 0, trader, DEADLINE);
+
+        // Pool ratio: 10 WETH : 20000 USDC → 1000 USDC requires 0.5 ETH
+        assertEq(amountToken, 1000e6, "amountToken should be 1000 USDC");
+        assertEq(amountETH, 0.5 ether, "amountETH should be 0.5 ether");
+        assertTrue(liquidity > 0, "liquidity should be > 0");
+
+        // USDC balance decreased
+        assertEq(usdc.balanceOf(trader), usdcBefore - amountToken);
+
+        // ETH balance net: sent 1 ETH, used 0.5 ETH, refunded 0.5 ETH → net -0.5 ETH
+        assertEq(trader.balance, ethBefore - amountETH, "ETH balance net should decrease by amountETH");
+
+        // Reserves increased
+        (uint256 reserveToken1, uint256 reserveEth1) =
+            UniswapV2Library.getReserves(address(factory), address(usdc), address(weth));
+        assertEq(reserveToken1 - reserveToken0, amountToken, "USDC reserve should increase");
+        assertEq(reserveEth1 - reserveEth0, amountETH, "WETH reserve should increase");
+    }
+
+    function test_addLiquidityETH_revertsOnInsufficientETH() public {
+        uint256 amountTokenDesired = 1000e6;
+        uint256 amountETHMin = 0.5 ether; // require at least 0.5 ETH
+
+        vm.prank(trader);
+        vm.expectRevert(bytes("UniswapV2Router: INSUFFICIENT_B_AMOUNT"));
+        router.addLiquidityETH{value: 1 wei}(address(usdc), amountTokenDesired, 0, amountETHMin, trader, DEADLINE);
+    }
+
+    function test_addLiquidity_revertsOnExpiredDeadline() public {
+        vm.prank(trader);
+        vm.expectRevert(bytes("UniswapV2: EXPIRED"));
+        router.addLiquidity(address(usdc), address(dai), 1000e6, 1000e18, 0, 0, trader, block.timestamp - 1);
+    }
+
+    // ---------------------------------------------------------------------------------------------
+    // Remove-liquidity stubs — still "Not implemented" (Phase 5 / US3)
+    // ---------------------------------------------------------------------------------------------
 
     function test_removeLiquidity_isStub() public {
         vm.prank(trader);

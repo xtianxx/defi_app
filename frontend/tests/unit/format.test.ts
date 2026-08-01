@@ -89,6 +89,19 @@ describe("format", () => {
       expect(parseTokenAmount("", 18)).toBe(0n);
       expect(parseTokenAmount("   ", 18)).toBe(0n);
     });
+
+    it("parses comma as decimal separator", () => {
+      expect(parseTokenAmount("1,5", 18)).toBe(1_500000000000000000n);
+    });
+
+    it("returns 0n for a bare decimal separator", () => {
+      expect(parseTokenAmount(".", 18)).toBe(0n);
+      expect(parseTokenAmount(",", 18)).toBe(0n);
+    });
+
+    it("returns 0n for non-numeric input", () => {
+      expect(parseTokenAmount("abc", 18)).toBe(0n);
+    });
   });
 
   describe("truncateAddress", () => {

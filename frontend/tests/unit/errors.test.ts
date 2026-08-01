@@ -44,6 +44,26 @@ describe("errors", () => {
       expect(entry.code).toBe("allowance");
     });
 
+    it("decodes router INSUFFICIENT_A_AMOUNT as slippage", () => {
+      const entry = decodeError(new Error("execution reverted: UniswapV2Router: INSUFFICIENT_A_AMOUNT"));
+      expect(entry.code).toBe("slippage");
+    });
+
+    it("decodes router INSUFFICIENT_B_AMOUNT as slippage", () => {
+      const entry = decodeError(new Error("execution reverted: UniswapV2Router: INSUFFICIENT_B_AMOUNT"));
+      expect(entry.code).toBe("slippage");
+    });
+
+    it("decodes EXCESSIVE_INPUT_AMOUNT as slippage", () => {
+      const entry = decodeError(new Error("execution reverted: UniswapV2: EXCESSIVE_INPUT_AMOUNT"));
+      expect(entry.code).toBe("slippage");
+    });
+
+    it("decodes router INVALID_PATH as invalid", () => {
+      const entry = decodeError(new Error("execution reverted: UniswapV2Router: INVALID_PATH"));
+      expect(entry.code).toBe("invalid");
+    });
+
     it("decodes K as internal", () => {
       const entry = decodeError(new Error("execution reverted: UniswapV2: K"));
       expect(entry.code).toBe("internal");

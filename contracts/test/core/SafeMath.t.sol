@@ -27,7 +27,7 @@ contract SafeMathTest is Test {
         caller = new SafeMathCaller();
     }
 
-    function test_add_basic() public {
+    function test_add_basic() public view {
         assertEq(caller.add(1, 2), 3);
         assertEq(caller.add(0, 0), 0);
         assertEq(caller.add(100, 200), 300);
@@ -38,7 +38,7 @@ contract SafeMathTest is Test {
         caller.add(type(uint256).max, 1);
     }
 
-    function test_sub_basic() public {
+    function test_sub_basic() public view {
         assertEq(caller.sub(5, 3), 2);
         assertEq(caller.sub(100, 100), 0);
     }
@@ -50,7 +50,7 @@ contract SafeMathTest is Test {
         caller.sub(1, 2);
     }
 
-    function test_mul_basic() public {
+    function test_mul_basic() public view {
         assertEq(caller.mul(3, 7), 21);
         assertEq(caller.mul(0, 999), 0);
         assertEq(caller.mul(1, type(uint256).max), type(uint256).max);

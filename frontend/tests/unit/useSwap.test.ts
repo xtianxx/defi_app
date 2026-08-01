@@ -193,7 +193,7 @@ describe("useSwap", () => {
     });
 
     await act(async () => {
-      await result.current.execute(0n, 1000n);
+      await result.current.execute(10n * 10n ** 18n, 0n, 1000n);
     });
 
     // Allowance was insufficient → approve called, then swap called.
@@ -223,7 +223,7 @@ describe("useSwap", () => {
     });
 
     await act(async () => {
-      await result.current.execute(0n, 1000n);
+      await result.current.execute(10n * 10n ** 18n, 0n, 1000n);
     });
 
     expect(tokenContract.approve).not.toHaveBeenCalled();
@@ -240,7 +240,7 @@ describe("useSwap", () => {
     });
 
     await act(async () => {
-      await result.current.execute(0n, 1000n);
+      await result.current.execute(10n * 10n ** 18n, 0n, 1000n);
     });
 
     expect(result.current.phase).toBe("rejected");
@@ -262,7 +262,7 @@ describe("useSwap", () => {
     });
 
     await act(async () => {
-      await result.current.execute(0n, 1000n);
+      await result.current.execute(10n * 10n ** 18n, 0n, 1000n);
     });
 
     expect(result.current.phase).toBe("error");
@@ -281,7 +281,7 @@ describe("useSwap", () => {
     });
 
     await act(async () => {
-      await result.current.execute(0n, 1000n);
+      await result.current.execute(10n * 10n ** 18n, 0n, 1000n);
     });
 
     expect(result.current.phase).toBe("error");
@@ -300,7 +300,7 @@ describe("useSwap", () => {
     });
 
     await act(async () => {
-      await result.current.execute(0n, 1000n);
+      await result.current.execute(10n * 10n ** 18n, 0n, 1000n);
     });
 
     expect(result.current.phase).toBe("reverted");
@@ -316,7 +316,7 @@ describe("useSwap", () => {
       result.current.setParams(TOKEN_IN, TOKEN_OUT, 10n * 10n ** 18n);
     });
     await act(async () => {
-      await result.current.execute(0n, 1000n);
+      await result.current.execute(10n * 10n ** 18n, 0n, 1000n);
     });
     expect(result.current.phase).toBe("confirmed");
 
@@ -344,7 +344,7 @@ describe("useSwap", () => {
     });
 
     await act(async () => {
-      await result.current.execute(0n, 1000n);
+      await result.current.execute(10n * 10n ** 18n, 0n, 1000n);
     });
 
     expect(result.current.phase).toBe("error");
@@ -361,10 +361,81 @@ describe("useSwap", () => {
     });
 
     await act(async () => {
-      await result.current.execute(0n, 1000n);
+      await result.current.execute(10n * 10n ** 18n, 0n, 1000n);
     });
 
     expect(result.current.phase).toBe("error");
     expect(result.current.error?.code).toBe("wrong-network");
+  });
+
+  it("execute uses the caller-passed amount, not stale hook state", async () => {
+    // Regression: the widget's input is synced into hook state via an effect,
+    // which lags the current input by a render cycle. If execute submitted the
+    // hook's stale amount, a fast edit (e.g. 50 → 70) followed by a click could
+    // swap the OLD amount on-chain. The amount must come from the caller.
+    const { routerContract } = setupContracts({ allowance: 1_000_000n * 10n ** 18n });
+    const { result } = renderHook(() => useSwap());
+
+    act(() => {
+      // Hook state still holds the previous (stale) amount...
+      result.current.setParams(TOKEN_IN, TOKEN_OUT, 10n * 10n ** 18n);
+    });
+
+    await act(async () => {
+      // ...but the caller submits the CURRENT amount.
+      await result.current.execute(70n * 10n ** 18n, 0n, 1000n);
+    });
+
+    expect(routerContract.swapExactTokensForTokens).toHaveBeenCalledWith(
+      70n * 10n ** 18n,
+      0n,
+      [TOKEN_IN, TOKEN_OUT],
+      ACCOUNT,
+      expect.any(BigInt),
+    );
+    expect(result.current.phase).toBe("confirmed");
+  });
+
+  it("execute with a non-positive caller amount surfaces an invalid-params error", async () => {
+    setupContracts({ allowance: 1_000_000n * 10n ** 18n });
+    const { result } = renderHook(() => useSwap());
+
+    act(() => {
+      result.current.setParams(TOKEN_IN, TOKEN_OUT, 10n * 10n ** 18n);
+    });
+
+    await act(async () => {
+      await result.current.execute(0n, 0n, 1000n);
+    });
+
+    expect(result.current.phase).toBe("error");
+    expect(result.current.error?.code).toBe("invalid");
+  });
+
+  it("setParams with unchanged params does not wipe terminal tx state", async () => {
+    // Regression: the widget effect re-fires on every `swap` identity change
+    // (e.g. phase transitions) with the SAME params. setParams must not reset
+    // an in-flight/terminal transaction in that case.
+    const { routerContract } = setupContracts({ allowance: 1_000_000n * 10n ** 18n });
+    const amountIn = 10n * 10n ** 18n;
+    const { result } = renderHook(() => useSwap());
+
+    act(() => {
+      result.current.setParams(TOKEN_IN, TOKEN_OUT, amountIn);
+    });
+    await act(async () => {
+      await result.current.execute(amountIn, 0n, 1000n);
+    });
+    expect(result.current.phase).toBe("confirmed");
+    expect(result.current.txHash).toBe(SWAP_HASH);
+
+    // Re-sync the SAME params (what the widget effect does on every phase
+    // change) — the confirmed state must survive.
+    act(() => {
+      result.current.setParams(TOKEN_IN, TOKEN_OUT, amountIn);
+    });
+    expect(result.current.phase).toBe("confirmed");
+    expect(result.current.txHash).toBe(SWAP_HASH);
+    expect(routerContract.swapExactTokensForTokens).toHaveBeenCalledTimes(1);
   });
 });

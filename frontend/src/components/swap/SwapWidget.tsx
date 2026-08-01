@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowDownUp, ArrowUpDown, Settings2 } from "lucide-react";
 import { useSwap } from "@/hooks/useSwap";
@@ -173,7 +173,10 @@ export function SwapWidget() {
     try {
       const result = await tokenInMeta.approve(routerAddr, amountIn);
       if (result.ok) {
-        await tokenInMeta.refresh();
+        // Re-read with a hint: refresh() must not overwrite the freshly
+        // approved allowance with a stale pre-tx read (it retries internally
+        // and keeps the optimistic value if the provider stays stale).
+        await tokenInMeta.refresh({ allowanceAtLeast: amountIn });
       } else {
         setApproveError(result.error.message);
         console.error("[SwapWidget] approve failed:", result.error);
@@ -189,6 +192,8 @@ export function SwapWidget() {
   const handleSwap = useCallback(async () => {
     if (
       !networkReady ||
+      !hasAmount ||
+      amountIn <= 0n ||
       !swap.amountOutEstimated ||
       swap.amountOutEstimated <= 0n ||
       amountOutMin === null ||
@@ -196,6 +201,8 @@ export function SwapWidget() {
     ) {
       console.warn("[Swap] handleSwap preconditions not met:", {
         networkReady,
+        hasAmount,
+        amountIn,
         hasEstimate: !!swap.amountOutEstimated,
         estimatePositive: swap.amountOutEstimated ? swap.amountOutEstimated > 0n : false,
         hasAmountOutMin: amountOutMin !== null,
@@ -203,8 +210,11 @@ export function SwapWidget() {
       });
       return;
     }
-    await swap.execute(amountOutMin, 1200n);
-  }, [networkReady, swap, amountOutMin, chainId]);
+    // Pass the CURRENT input amount explicitly — the hook's internal state is
+    // synced via an effect and can lag the input, which would submit a stale
+    // amount (e.g. the previously typed value).
+    await swap.execute(amountIn, amountOutMin, 1200n);
+  }, [networkReady, hasAmount, amountIn, swap, amountOutMin, chainId]);
 
   const handleReset = useCallback(() => {
     swap.reset();
@@ -213,12 +223,26 @@ export function SwapWidget() {
     setTokenOutSymbol("USDC");
   }, [swap]);
 
-  // After a confirmed swap, clear the amount input so the user can enter a new
-  // trade without accidentally re-submitting the previous (now-stale) quote.
-  // The token pair selection is preserved so the user can swap again immediately.
+  // Keep the "confirmed" box (with txHash + explorer link) visible until the
+  // user acts: editing the amount (→ setParams sees a real change → phase
+  // resets) or clicking "Swap again" (→ handleReset). Clearing the input here
+  // previously triggered setParams(null), which wiped the terminal tx state.
+  const swapBusy =
+    swap.phase === "approving" ||
+    swap.phase === "submitting" ||
+    swap.phase === "mining";
+
+  // After a confirmed swap, reconcile the widget's token state: the swap may
+  // have approved + swapped on-chain, and the balance/allowance shown must
+  // reflect that. Use refs so this effect depends only on the phase.
+  const tokenInMetaRef = useRef(tokenInMeta);
+  tokenInMetaRef.current = tokenInMeta;
+  const latestAmountInRef = useRef(amountIn);
+  latestAmountInRef.current = amountIn;
   useEffect(() => {
     if (swap.phase === "confirmed") {
-      setAmountInStr("");
+      const amt = latestAmountInRef.current;
+      void tokenInMetaRef.current.refresh({ allowanceAtLeast: amt ?? 0n });
     }
   }, [swap.phase]);
 
@@ -444,7 +468,7 @@ export function SwapWidget() {
         <div className="mt-3 rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-700 dark:border-green-900 dark:bg-green-950 dark:text-green-400">
           <p className="font-medium">Swap confirmed ✓</p>
           <p className="mt-0.5 text-xs text-green-600 dark:text-green-500">
-            MetaMask may show "Failed" on local chains — this is a display bug. The on-chain status is confirmed below.
+            Note: MetaMask may show this transaction as "Failed" on local chains even though it succeeded — a known MetaMask display bug. The on-chain status shown here is authoritative.
           </p>
           {explorerUrl ? (
             <a
@@ -468,7 +492,7 @@ export function SwapWidget() {
         </div>
       )}
 
-      {needsApprove && (
+      {needsApprove && !swapBusy && (
         <button
           type="button"
           onClick={handleApprove}
