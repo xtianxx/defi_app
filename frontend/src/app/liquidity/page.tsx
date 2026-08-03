@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { AddLiquidity } from "@/components/liquidity/AddLiquidity";
+import { RemoveLiquidity } from "@/components/liquidity/RemoveLiquidity";
 import { ActivePositions } from "@/components/liquidity/ActivePositions";
 
 type Tab = "add" | "remove";
@@ -40,18 +41,7 @@ export default function LiquidityPage() {
       </div>
 
       {/* Tab content */}
-      {tab === "add" ? (
-        <AddLiquidity />
-      ) : (
-        <div className="w-full max-w-md rounded-lg border border-border bg-card p-8 text-center shadow-sm">
-          <p className="text-lg font-medium text-muted-foreground">
-            Remove Liquidity — coming in Phase 5
-          </p>
-          <p className="mt-2 text-sm text-muted-foreground/70">
-            The remove liquidity feature is currently under development.
-          </p>
-        </div>
-      )}
+      {tab === "add" ? <AddLiquidity /> : <RemoveLiquidity />}
 
       {/* Active positions list */}
       <div className="mt-6 w-full max-w-md">

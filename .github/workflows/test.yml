@@ -46,7 +46,7 @@ jobs:
       # 0% coverage which would fail the gate and produce red CI noise.
       - name: Coverage report
         if: hashFiles('contracts/src/**/*.sol') != ''
-        run: forge coverage --no-match-coverage "script/|test/"
+        run: forge coverage --no-match-coverage "script/|test/" --ir-minimum
 
       # Constitution II: gas baseline regression
       # NOTE: gated until Phase 7 (T065) commits the initial .gas-snapshot.

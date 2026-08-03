@@ -9,12 +9,12 @@ import {IWETH} from "./interfaces/IWETH.sol";
 import {UniswapV2Library} from "./libraries/UniswapV2Library.sol";
 import {TransferHelper} from "./libraries/TransferHelper.sol";
 
-/// @title UniswapV2Router02 — periphery router (direct-pair swaps + liquidity stubs).
+/// @title UniswapV2Router02 — periphery router (direct-pair swaps + liquidity ops).
 /// @notice Phase 3 (User Story 1 — Token Swap) implements the six swap entrypoints. Liquidity
-///         ops (`addLiquidity*` / `removeLiquidity*`) are stubs that revert "Not implemented";
-///         they land in Phase 4 (US2) and Phase 5 (US3). Per FR-011 / R0.3 there are NO multi-hop
-///         paths (`path.length` MUST equal 2, else `revert DirectPairOnly()`) and NO flash swaps
-///         (the Pair's `swap` has no `bytes data` callback).
+///         ops are fully implemented: `addLiquidity*` (Phase 4 / US2) and `removeLiquidity*`
+///         incl. the ETH + permit variants (Phase 5 / US3). Per FR-011 / R0.3 there are NO
+///         multi-hop paths (`path.length` MUST equal 2, else `revert DirectPairOnly()`) and NO
+///         flash swaps (the Pair's `swap` has no `bytes data` callback).
 contract UniswapV2Router02 is IUniswapV2Router02 {
     /// @dev Custom error emitted when `path.length != 2` (multi-hop attempted, FR-011).
     error DirectPairOnly();
@@ -221,7 +221,7 @@ contract UniswapV2Router02 is IUniswapV2Router02 {
     }
 
     // ---------------------------------------------------------------------------------------------
-    // Liquidity — stubs (Phase 4 / US2 and Phase 5 / US3)
+    // Liquidity — implemented (Phase 4 / US2 and Phase 5 / US3)
     // ---------------------------------------------------------------------------------------------
 
     /// @dev Compute optimal deposit amounts for a token/token pair (or token/WETH).
@@ -304,7 +304,18 @@ contract UniswapV2Router02 is IUniswapV2Router02 {
         }
     }
 
-    /// @notice Remove liquidity from a token/token pair — STUB (Phase 5 / US3).
+    /// @notice Remove liquidity from a token/token pair. Sends the LP tokens to the pair (which
+    ///         burns them) and transfers the proportional token amounts to `to`. Slippage is
+    ///         bounded by `amountAMin` / `amountBMin` (the minimum amounts the caller accepts).
+    /// @param tokenA One of the pair's tokens.
+    /// @param tokenB The other of the pair's tokens.
+    /// @param liquidity Amount of LP tokens to burn.
+    /// @param amountAMin Minimum amount of `tokenA` to receive (slippage protection).
+    /// @param amountBMin Minimum amount of `tokenB` to receive (slippage protection).
+    /// @param to Recipient of the removed tokens.
+    /// @param deadline Transaction deadline (unix timestamp).
+    /// @return amountA The amount of `tokenA` received by `to`.
+    /// @return amountB The amount of `tokenB` received by `to`.
     function removeLiquidity(
         address tokenA,
         address tokenB,
@@ -313,12 +324,26 @@ contract UniswapV2Router02 is IUniswapV2Router02 {
         uint256 amountBMin,
         address to,
         uint256 deadline
-    ) external view ensure(deadline) returns (uint256, uint256) {
-        (tokenA, tokenB, liquidity, amountAMin, amountBMin, to, deadline);
-        revert("Not implemented");
+    ) public ensure(deadline) returns (uint256 amountA, uint256 amountB) {
+        address pair = UniswapV2Library.pairFor(factory, tokenA, tokenB);
+        TransferHelper.safeTransferFrom(pair, msg.sender, pair, liquidity); // send LP to pair
+        (uint256 amount0, uint256 amount1) = IUniswapV2Pair(pair).burn(to);
+        (address token0,) = UniswapV2Library.sortTokens(tokenA, tokenB);
+        (amountA, amountB) = tokenA == token0 ? (amount0, amount1) : (amount1, amount0);
+        require(amountA >= amountAMin, "UniswapV2Router: INSUFFICIENT_A_AMOUNT");
+        require(amountB >= amountBMin, "UniswapV2Router: INSUFFICIENT_B_AMOUNT");
     }
 
-    /// @notice Remove liquidity from a token/ETH pair — STUB (Phase 5 / US3).
+    /// @notice Remove liquidity from a token/ETH pair. Unwraps the WETH to ETH before sending
+    ///         both tokens to `to`. Slippage is bounded by `amountTokenMin` / `amountETHMin`.
+    /// @param token The non-WETH token of the pair.
+    /// @param liquidity Amount of LP tokens to burn.
+    /// @param amountTokenMin Minimum amount of `token` to receive (slippage protection).
+    /// @param amountETHMin Minimum amount of ETH to receive (slippage protection).
+    /// @param to Recipient of the removed tokens and ETH.
+    /// @param deadline Transaction deadline (unix timestamp).
+    /// @return amountToken The amount of `token` received by `to`.
+    /// @return amountETH The amount of ETH received by `to`.
     function removeLiquidityETH(
         address token,
         uint256 liquidity,
@@ -326,12 +351,32 @@ contract UniswapV2Router02 is IUniswapV2Router02 {
         uint256 amountETHMin,
         address to,
         uint256 deadline
-    ) external view ensure(deadline) returns (uint256, uint256) {
-        (token, liquidity, amountTokenMin, amountETHMin, to, deadline);
-        revert("Not implemented");
+    ) public ensure(deadline) returns (uint256 amountToken, uint256 amountETH) {
+        (amountToken, amountETH) = removeLiquidity(
+            token, WETH, liquidity, amountTokenMin, amountETHMin, address(this), deadline
+        );
+        TransferHelper.safeTransfer(token, to, amountToken);
+        IWETH(WETH).withdraw(amountETH);
+        TransferHelper.safeTransferETH(to, amountETH);
     }
 
-    /// @notice Remove liquidity with permit (token/token) — STUB (Phase 5 / US3).
+    /// @notice Remove liquidity from a token/token pair, authorizing the burn via an EIP-712
+    ///         `permit` signature instead of a prior LP approval. Everything else matches
+    ///         `removeLiquidity`.
+    /// @param tokenA One of the pair's tokens.
+    /// @param tokenB The other of the pair's tokens.
+    /// @param liquidity Amount of LP tokens to burn.
+    /// @param amountAMin Minimum amount of `tokenA` to receive (slippage protection).
+    /// @param amountBMin Minimum amount of `tokenB` to receive (slippage protection).
+    /// @param to Recipient of the removed tokens.
+    /// @param deadline Transaction deadline (also the permit deadline).
+    /// @param approveMax If true, the permit grants `type(uint256).max` allowance instead of
+    ///        exactly `liquidity`.
+    /// @param v EIP-712 signature `v` value.
+    /// @param r EIP-712 signature `r` value.
+    /// @param s EIP-712 signature `s` value.
+    /// @return amountA The amount of `tokenA` received by `to`.
+    /// @return amountB The amount of `tokenB` received by `to`.
     function removeLiquidityWithPermit(
         address tokenA,
         address tokenB,
@@ -344,12 +389,29 @@ contract UniswapV2Router02 is IUniswapV2Router02 {
         uint8 v,
         bytes32 r,
         bytes32 s
-    ) external view ensure(deadline) returns (uint256, uint256) {
-        (tokenA, tokenB, liquidity, amountAMin, amountBMin, to, deadline, approveMax, v, r, s);
-        revert("Not implemented");
+    ) external returns (uint256 amountA, uint256 amountB) {
+        address pair = UniswapV2Library.pairFor(factory, tokenA, tokenB);
+        uint256 value = approveMax ? type(uint256).max : liquidity;
+        IUniswapV2Pair(pair).permit(msg.sender, address(this), value, deadline, v, r, s);
+        (amountA, amountB) = removeLiquidity(tokenA, tokenB, liquidity, amountAMin, amountBMin, to, deadline);
     }
 
-    /// @notice Remove liquidity with permit (token/ETH) — STUB (Phase 5 / US3).
+    /// @notice Remove liquidity from a token/ETH pair, authorizing the burn via an EIP-712
+    ///         `permit` signature instead of a prior LP approval. Unwraps the WETH to ETH before
+    ///         sending both tokens to `to`.
+    /// @param token The non-WETH token of the pair.
+    /// @param liquidity Amount of LP tokens to burn.
+    /// @param amountTokenMin Minimum amount of `token` to receive (slippage protection).
+    /// @param amountETHMin Minimum amount of ETH to receive (slippage protection).
+    /// @param to Recipient of the removed tokens and ETH.
+    /// @param deadline Transaction deadline (also the permit deadline).
+    /// @param approveMax If true, the permit grants `type(uint256).max` allowance instead of
+    ///        exactly `liquidity`.
+    /// @param v EIP-712 signature `v` value.
+    /// @param r EIP-712 signature `r` value.
+    /// @param s EIP-712 signature `s` value.
+    /// @return amountToken The amount of `token` received by `to`.
+    /// @return amountETH The amount of ETH received by `to`.
     function removeLiquidityETHWithPermit(
         address token,
         uint256 liquidity,
@@ -361,8 +423,14 @@ contract UniswapV2Router02 is IUniswapV2Router02 {
         uint8 v,
         bytes32 r,
         bytes32 s
-    ) external view ensure(deadline) returns (uint256, uint256) {
-        (token, liquidity, amountTokenMin, amountETHMin, to, deadline, approveMax, v, r, s);
-        revert("Not implemented");
+    ) external returns (uint256 amountToken, uint256 amountETH) {
+        address pair = UniswapV2Library.pairFor(factory, token, WETH);
+        uint256 value = approveMax ? type(uint256).max : liquidity;
+        IUniswapV2Pair(pair).permit(msg.sender, address(this), value, deadline, v, r, s);
+        (amountToken, amountETH) =
+            removeLiquidity(token, WETH, liquidity, amountTokenMin, amountETHMin, address(this), deadline);
+        TransferHelper.safeTransfer(token, to, amountToken);
+        IWETH(WETH).withdraw(amountETH);
+        TransferHelper.safeTransferETH(to, amountETH);
     }
 }

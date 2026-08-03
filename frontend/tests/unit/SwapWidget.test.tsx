@@ -193,6 +193,14 @@ describe("SwapWidget", () => {
   it("shows an Approve button when token allowance is below amountIn", async () => {
     const user = userEvent.setup();
     mockTokenState({ allowance: 0n });
+    mockPairState({
+      reserves: {
+        reserve0: 1000n * 10n ** 18n,
+        reserve1: 1000n * 10n ** 6n,
+        blockTimestampLast: 0,
+      },
+    });
+    mockSwapState({ amountOutEstimated: 1000000n });
     render(<SwapWidget />);
     const inputs = screen.getAllByRole("textbox");
     await user.type(inputs[0], "1");
@@ -203,6 +211,16 @@ describe("SwapWidget", () => {
 
   it("enables Swap only when connected, amount entered, and pool exists", async () => {
     const user = userEvent.setup();
+    mockPairState({
+      token0: getTokenAddress("WETH", 31337),
+      token1: getTokenAddress("USDC", 31337),
+      reserves: {
+        reserve0: 1000n * 10n ** 18n,
+        reserve1: 1000n * 10n ** 6n,
+        blockTimestampLast: 0,
+      },
+    });
+    mockSwapState({ amountOutEstimated: 1000000n });
 
     // Disconnected
     mockWeb3Context({ status: "idle", account: null, chainId: null, chain: null });
@@ -221,12 +239,63 @@ describe("SwapWidget", () => {
     expect(screen.getByRole("button", { name: /^Swap$/ })).toBeEnabled();
   });
 
+  it("shows insufficient-liquidity guidance and disables Swap for a zero quote", async () => {
+    const user = userEvent.setup();
+    mockTokenState({ allowance: 0n });
+    mockPairState({
+      token0: getTokenAddress("WETH", 31337),
+      token1: getTokenAddress("USDC", 31337),
+      reserves: {
+        reserve0: 1n,
+        reserve1: 1n,
+        blockTimestampLast: 0,
+      },
+    });
+    mockSwapState({ amountOutEstimated: 0n });
+
+    render(<SwapWidget />);
+    await user.type(screen.getAllByRole("textbox")[0], "2");
+
+    expect(
+      screen.getByText("Insufficient liquidity for this swap amount."),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Add Liquidity/i })).toHaveAttribute(
+      "href",
+      "/liquidity",
+    );
+    expect(
+      screen.getByRole("button", { name: /^Insufficient liquidity$/ }),
+    ).toBeDisabled();
+    expect(screen.queryByRole("button", { name: /^Approve first$/ })).not.toBeInTheDocument();
+    expect(screen.queryByDisplayValue("0.000000")).not.toBeInTheDocument();
+  });
+
+  it("shows no-usable-liquidity guidance and disables Swap for empty reserves", async () => {
+    const user = userEvent.setup();
+    mockPairState({
+      token0: getTokenAddress("WETH", 31337),
+      token1: getTokenAddress("USDC", 31337),
+      reserves: {
+        reserve0: 0n,
+        reserve1: 0n,
+        blockTimestampLast: 0,
+      },
+    });
+
+    render(<SwapWidget />);
+    await user.type(screen.getAllByRole("textbox")[0], "1");
+
+    expect(screen.getByText("This pool has no liquidity available.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^No liquidity$/ })).toBeDisabled();
+  });
+
   it("shows pool-empty message and Add Liquidity link when pair does not exist", () => {
     mockPairState({ pairAddress: null });
     render(<SwapWidget />);
     expect(
       screen.getByText("No liquidity pool for this pair yet."),
     ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^No pool$/ })).toBeDisabled();
     expect(screen.getByRole("link", { name: /Add Liquidity/i })).toHaveAttribute(
       "href",
       "/liquidity",
