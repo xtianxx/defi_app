@@ -486,6 +486,11 @@ export function AddLiquidity() {
             className="flex-1 bg-transparent py-2 text-right text-2xl font-medium outline-none placeholder:text-muted-foreground/50"
           />
         </div>
+        {isWETHA && (
+          <p className="pt-1 text-xs text-muted-foreground">
+            You pay native ETH. The Router will wrap it into WETH.
+          </p>
+        )}
       </div>
 
       <div className="flex justify-center py-1">
@@ -519,6 +524,11 @@ export function AddLiquidity() {
             className="flex-1 bg-transparent py-2 text-right text-2xl font-medium outline-none placeholder:text-muted-foreground/50"
           />
         </div>
+        {isWETHB && (
+          <p className="pt-1 text-xs text-muted-foreground">
+            You pay native ETH. The Router will wrap it into WETH.
+          </p>
+        )}
       </div>
 
       {/* First liquidity provider message */}

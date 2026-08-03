@@ -127,6 +127,19 @@ export function SwapWidget() {
     [hasAmount, tokenInMeta.balance, amountIn],
   );
 
+  // A pair can remain deployed after its user-owned liquidity is removed. In
+  // that state it may still report tiny reserves, for which V2 integer math
+  // returns a zero quote. Treat both that case and known-invalid reserve data
+  // as unavailable liquidity instead of presenting an actionable swap form.
+  const hasKnownEmptyReserves = useMemo(
+    () =>
+      pair.pairAddress !== null &&
+      pair.reserves !== null &&
+      (pair.reserves.reserve0 <= 0n || pair.reserves.reserve1 <= 0n),
+    [pair.pairAddress, pair.reserves],
+  );
+  const hasZeroQuote = swap.amountOutEstimated === 0n;
+
   const amountOutMin = useMemo(() => {
     if (!swap.amountOutEstimated || swap.amountOutEstimated <= 0n) return null;
     return (swap.amountOutEstimated * (10000n - BigInt(slippageBp))) / 10000n;
@@ -264,13 +277,29 @@ export function SwapWidget() {
         return "Try again";
       default:
         if (!networkReady) return "Connect wallet";
-        if (!hasAmount) return "Enter amount";
-        if (insufficient) return "Insufficient balance";
         if (pair.pairAddress === null) return "No pool";
+        if (hasKnownEmptyReserves) return "No liquidity";
+        if (!hasAmount) return "Enter amount";
+        if (
+          swap.amountOutEstimated === null ||
+          swap.amountOutEstimated <= 0n
+        ) {
+          return "Insufficient liquidity";
+        }
+        if (insufficient) return "Insufficient balance";
         if (needsApprove) return "Approve first";
         return "Swap";
     }
-  }, [swap.phase, networkReady, hasAmount, insufficient, pair.pairAddress, needsApprove]);
+  }, [
+    swap.phase,
+    networkReady,
+    hasAmount,
+    insufficient,
+    pair.pairAddress,
+    hasKnownEmptyReserves,
+    swap.amountOutEstimated,
+    needsApprove,
+  ]);
 
   const swapDisabled = useMemo(
     () =>
@@ -278,16 +307,30 @@ export function SwapWidget() {
       !hasAmount ||
       insufficient ||
       pair.pairAddress === null ||
+      hasKnownEmptyReserves ||
+      (hasAmount &&
+        (swap.amountOutEstimated === null || swap.amountOutEstimated <= 0n)) ||
       needsApprove ||
       swap.phase === "approving" ||
       swap.phase === "submitting" ||
       swap.phase === "mining" ||
       swap.phase === "confirmed",
-    [networkReady, hasAmount, insufficient, pair.pairAddress, needsApprove, swap.phase],
+    [
+      networkReady,
+      hasAmount,
+      insufficient,
+      pair.pairAddress,
+      hasKnownEmptyReserves,
+      swap.amountOutEstimated,
+      needsApprove,
+      swap.phase,
+    ],
   );
 
   const showPoolEmpty =
     pair.pairAddress === null && tokenInAddr !== null && tokenOutAddr !== null;
+  const showInsufficientLiquidity =
+    pair.pairAddress !== null && (hasKnownEmptyReserves || hasZeroQuote);
 
   const explorerUrl = useMemo(
     () =>
@@ -404,11 +447,11 @@ export function SwapWidget() {
             type="text"
             readOnly
             placeholder="0.0"
-            value={formatTokenAmountFixed(
-              swap.amountOutEstimated,
-              tokenOut.decimals,
-              6,
-            )}
+            value={
+              swap.amountOutEstimated === 0n
+                ? ""
+                : formatTokenAmountFixed(swap.amountOutEstimated, tokenOut.decimals, 6)
+            }
             className="flex-1 bg-transparent py-2 text-right text-2xl font-medium outline-none placeholder:text-muted-foreground/50"
           />
         </div>
@@ -439,6 +482,22 @@ export function SwapWidget() {
       {showPoolEmpty && (
         <div className="mt-3 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
           <p className="font-medium">No liquidity pool for this pair yet.</p>
+          <Link
+            href="/liquidity"
+            className="mt-1 inline-block font-semibold underline underline-offset-2 hover:opacity-80"
+          >
+            Add Liquidity
+          </Link>
+        </div>
+      )}
+
+      {showInsufficientLiquidity && (
+        <div className="mt-3 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+          <p className="font-medium">
+            {hasZeroQuote
+              ? "Insufficient liquidity for this swap amount."
+              : "This pool has no liquidity available."}
+          </p>
           <Link
             href="/liquidity"
             className="mt-1 inline-block font-semibold underline underline-offset-2 hover:opacity-80"

@@ -241,6 +241,13 @@ describe("AddLiquidity", () => {
     expect(screen.getByText(/10\.00%/)).toBeInTheDocument();
   });
 
+  it("shows a WETH-pair hint that the user pays native ETH and the Router wraps it", () => {
+    render(<AddLiquidity />);
+    expect(
+      screen.getByText(/You pay native ETH\. The Router will wrap it into WETH\./),
+    ).toBeInTheDocument();
+  });
+
   it("shows approve button when the non-ETH token allowance is insufficient", async () => {
     const user = userEvent.setup();
 

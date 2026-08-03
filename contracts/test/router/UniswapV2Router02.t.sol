@@ -10,8 +10,9 @@ import {MockERC20} from "../mocks/MockERC20.sol";
 import {UniswapV2Library} from "../../src/router/libraries/UniswapV2Library.sol";
 import {Math} from "../../src/core/libraries/Math.sol";
 
-/// @title UniswapV2Router02Test — swap entrypoints (Phase 3 / US1).
-/// @notice Liquidity ops are stubs and tested only for revert; swap paths are direct-pair only.
+/// @title UniswapV2Router02Test — swap + liquidity entrypoints (Phases 3–5 / US1–US3).
+/// @notice Swap paths are direct-pair only; add/remove liquidity (incl. ETH + permit variants)
+///         are fully implemented.
 contract UniswapV2Router02Test is Test {
     UniswapV2Factory internal factory;
     WETH9 internal weth;
@@ -89,6 +90,14 @@ contract UniswapV2Router02Test is Test {
             (bool ok,) = token.call(abi.encodeWithSignature("transferFrom(address,address,uint256)", from, to, value));
             require(ok, "setup: transferFrom failed");
         }
+    }
+
+    /// @dev Transfer `amount` LP tokens of `pair` from this contract (the seeder) to `to`,
+    ///      then approve the router to spend them on `to`'s behalf.
+    function _fundLp(address pair, address to, uint256 amount) internal {
+        UniswapV2Pair(pair).transfer(to, amount);
+        vm.prank(to);
+        UniswapV2Pair(pair).approve(address(router), type(uint256).max);
     }
 
     // ---------------------------------------------------------------------------------------------
@@ -518,35 +527,278 @@ contract UniswapV2Router02Test is Test {
     }
 
     // ---------------------------------------------------------------------------------------------
-    // Remove-liquidity stubs — still "Not implemented" (Phase 5 / US3)
+    // removeLiquidity — Phase 5 / US3
     // ---------------------------------------------------------------------------------------------
 
-    function test_removeLiquidity_isStub() public {
+    /// @dev Removing a partial LP position returns amounts proportional to the pool share
+    ///      (floor-rounded), burns the LP, and moves the tokens to the caller.
+    function test_removeLiquidity_succeeds_proportional() public {
+        uint256 liquidity = UniswapV2Pair(pairUsdcDai).balanceOf(address(this)) / 2;
+        _fundLp(pairUsdcDai, trader, liquidity);
+
+        (uint256 reserveA, uint256 reserveB) =
+            UniswapV2Library.getReserves(address(factory), address(usdc), address(dai));
+        uint256 totalSupply = UniswapV2Pair(pairUsdcDai).totalSupply();
+        uint256 usdcBefore = usdc.balanceOf(trader);
+        uint256 daiBefore = dai.balanceOf(trader);
+
         vm.prank(trader);
-        vm.expectRevert(bytes("Not implemented"));
-        router.removeLiquidity(address(usdc), address(dai), 1e18, 0, 0, trader, DEADLINE);
+        (uint256 amountA, uint256 amountB) =
+            router.removeLiquidity(address(usdc), address(dai), liquidity, 0, 0, trader, DEADLINE);
+
+        // Proportional to pool share (floor rounding within 1 wei).
+        assertApproxEqAbs(amountA, liquidity * reserveA / totalSupply, 1, "amountA should match proportional share");
+        assertApproxEqAbs(amountB, liquidity * reserveB / totalSupply, 1, "amountB should match proportional share");
+
+        // Trader receives exactly the returned amounts.
+        assertEq(usdc.balanceOf(trader), usdcBefore + amountA, "trader USDC balance should increase by amountA");
+        assertEq(dai.balanceOf(trader), daiBefore + amountB, "trader DAI balance should increase by amountB");
+
+        // Reserves decrease by the returned amounts.
+        (uint256 reserveA1, uint256 reserveB1) =
+            UniswapV2Library.getReserves(address(factory), address(usdc), address(dai));
+        assertEq(reserveA1, reserveA - amountA, "USDC reserve should decrease by amountA");
+        assertEq(reserveB1, reserveB - amountB, "DAI reserve should decrease by amountB");
+
+        // LP tokens are burned.
+        assertEq(
+            UniswapV2Pair(pairUsdcDai).totalSupply(),
+            totalSupply - liquidity,
+            "totalSupply should decrease by liquidity"
+        );
+        assertEq(UniswapV2Pair(pairUsdcDai).balanceOf(trader), 0, "trader LP balance should be spent");
     }
 
-    function test_removeLiquidityETH_isStub() public {
+    /// @dev Removing 100% of the LP position closes it: LP balance hits zero, both tokens are
+    ///      released, and totalSupply shrinks by the burned liquidity.
+    function test_removeLiquidity_100PercentClosesPosition() public {
+        uint256 liquidity = UniswapV2Pair(pairUsdcDai).balanceOf(address(this));
+        _fundLp(pairUsdcDai, trader, liquidity);
+        uint256 totalSupplyBefore = UniswapV2Pair(pairUsdcDai).totalSupply();
+
         vm.prank(trader);
-        vm.expectRevert(bytes("Not implemented"));
-        router.removeLiquidityETH(address(usdc), 1e18, 0, 0, trader, DEADLINE);
+        (uint256 amountA, uint256 amountB) =
+            router.removeLiquidity(address(usdc), address(dai), liquidity, 0, 0, trader, DEADLINE);
+
+        assertEq(UniswapV2Pair(pairUsdcDai).balanceOf(trader), 0, "trader LP balance should be 0 (position closed)");
+        assertEq(UniswapV2Pair(pairUsdcDai).totalSupply(), totalSupplyBefore - liquidity, "totalSupply should decrease");
+        assertTrue(amountA > 0, "amountA should be > 0");
+        assertTrue(amountB > 0, "amountB should be > 0");
     }
 
-    function test_removeLiquidityWithPermit_isStub() public {
+    /// @dev Removing with `amountAMin` above the actual return reverts with the A slippage reason.
+    function test_removeLiquidity_revertsOnSlippageA() public {
+        uint256 liquidity = UniswapV2Pair(pairUsdcDai).balanceOf(address(this));
+        _fundLp(pairUsdcDai, trader, liquidity);
+
         vm.prank(trader);
-        vm.expectRevert(bytes("Not implemented"));
+        vm.expectRevert(bytes("UniswapV2Router: INSUFFICIENT_A_AMOUNT"));
+        router.removeLiquidity(address(usdc), address(dai), liquidity, type(uint256).max, 0, trader, DEADLINE);
+    }
+
+    /// @dev Removing with `amountBMin` above the actual return reverts with the B slippage reason.
+    function test_removeLiquidity_revertsOnSlippageB() public {
+        uint256 liquidity = UniswapV2Pair(pairUsdcDai).balanceOf(address(this));
+        _fundLp(pairUsdcDai, trader, liquidity);
+
+        vm.prank(trader);
+        vm.expectRevert(bytes("UniswapV2Router: INSUFFICIENT_B_AMOUNT"));
+        router.removeLiquidity(address(usdc), address(dai), liquidity, 0, type(uint256).max, trader, DEADLINE);
+    }
+
+    /// @dev A user without a router LP approval cannot remove liquidity (transferFrom fails).
+    function test_removeLiquidity_revertsWithoutApproval() public {
+        address bad = address(0xBAD);
+        uint256 liquidity = UniswapV2Pair(pairUsdcDai).balanceOf(address(this)) / 2;
+        UniswapV2Pair(pairUsdcDai).transfer(bad, liquidity); // LP given, but NO approval
+
+        vm.prank(bad);
+        vm.expectRevert(bytes("TransferHelper: TRANSFER_FROM_FAILED"));
+        router.removeLiquidity(address(usdc), address(dai), liquidity, 0, 0, bad, DEADLINE);
+    }
+
+    /// @dev Expired deadlines are rejected before any state change.
+    function test_removeLiquidity_revertsOnExpiredDeadline() public {
+        vm.prank(trader);
+        vm.expectRevert(bytes("UniswapV2: EXPIRED"));
+        router.removeLiquidity(address(usdc), address(dai), 1e18, 0, 0, trader, block.timestamp - 1);
+    }
+
+    /// @dev Optional: adding as trader then removing 100% recovers exactly the proportional share.
+    function test_removeLiquidity_returnsProportionalToShare() public {
+        // Trader adds liquidity to the already-seeded USDC/DAI pool.
+        vm.prank(trader);
+        (uint256 amountA, uint256 amountB, uint256 liquidity) =
+            router.addLiquidity(address(usdc), address(dai), 1000e6, 1000e18, 0, 0, trader, DEADLINE);
+
+        // The router needs an LP allowance to burn the trader's freshly minted position.
+        vm.prank(trader);
+        UniswapV2Pair(pairUsdcDai).approve(address(router), type(uint256).max);
+
+        (uint256 reserveA, uint256 reserveB) =
+            UniswapV2Library.getReserves(address(factory), address(usdc), address(dai));
+        uint256 totalSupply = UniswapV2Pair(pairUsdcDai).totalSupply();
+
+        vm.prank(trader);
+        (uint256 outA, uint256 outB) =
+            router.removeLiquidity(address(usdc), address(dai), liquidity, 0, 0, trader, DEADLINE);
+
+        // Trader recovers ~what they deposited, proportional to their pool share.
+        assertApproxEqAbs(outA, amountA, 1, "trader should recover ~amountA");
+        assertApproxEqAbs(outB, amountB, 1, "trader should recover ~amountB");
+        assertApproxEqAbs(outA, liquidity * reserveA / totalSupply, 1, "outA should match proportional share");
+        assertApproxEqAbs(outB, liquidity * reserveB / totalSupply, 1, "outB should match proportional share");
+    }
+
+    // ---------------------------------------------------------------------------------------------
+    // removeLiquidityETH — Phase 5 / US3
+    // ---------------------------------------------------------------------------------------------
+
+    /// @dev Removing from a WETH pair unwraps WETH to ETH and delivers both token and ETH to `to`.
+    function test_removeLiquidityETH_succeeds() public {
+        uint256 liquidity = UniswapV2Pair(pairWethUsdc).balanceOf(address(this));
+        _fundLp(pairWethUsdc, trader, liquidity);
+
+        (uint256 reserveToken, uint256 reserveEth) =
+            UniswapV2Library.getReserves(address(factory), address(usdc), address(weth));
+        uint256 totalSupply = UniswapV2Pair(pairWethUsdc).totalSupply();
+        uint256 usdcBefore = usdc.balanceOf(recipient);
+        uint256 ethBefore = recipient.balance;
+
+        vm.prank(trader);
+        (uint256 amountToken, uint256 amountETH) =
+            router.removeLiquidityETH(address(usdc), liquidity, 0, 0, recipient, DEADLINE);
+
+        assertApproxEqAbs(
+            amountToken, liquidity * reserveToken / totalSupply, 1, "USDC should match proportional share"
+        );
+        assertApproxEqAbs(amountETH, liquidity * reserveEth / totalSupply, 1, "ETH should match proportional share");
+        assertEq(usdc.balanceOf(recipient), usdcBefore + amountToken, "recipient should receive USDC");
+        assertEq(recipient.balance, ethBefore + amountETH, "recipient should receive ETH");
+    }
+
+    /// @dev Expired deadlines are rejected before any state change.
+    function test_removeLiquidityETH_revertsOnExpiredDeadline() public {
+        vm.prank(trader);
+        vm.expectRevert(bytes("UniswapV2: EXPIRED"));
+        router.removeLiquidityETH(address(usdc), 1e18, 0, 0, trader, block.timestamp - 1);
+    }
+
+    // ---------------------------------------------------------------------------------------------
+    // removeLiquidityWithPermit — Phase 5 / US3
+    // ---------------------------------------------------------------------------------------------
+
+    /// @dev A signed EIP-712 permit (no prior approval) authorizes the router to burn LP.
+    function test_removeLiquidityWithPermit_succeeds() public {
+        uint256 lpKey = 0xA11CE;
+        address lpOwner = vm.addr(lpKey);
+        uint256 liquidity = UniswapV2Pair(pairUsdcDai).balanceOf(address(this)) / 2;
+        UniswapV2Pair(pairUsdcDai).transfer(lpOwner, liquidity); // LP given, but NO approve
+
+        bytes32 digest = keccak256(
+            abi.encodePacked(
+                "\x19\x01",
+                UniswapV2Pair(pairUsdcDai).DOMAIN_SEPARATOR(),
+                keccak256(
+                    abi.encode(
+                        UniswapV2Pair(pairUsdcDai).PERMIT_TYPEHASH(),
+                        lpOwner,
+                        address(router),
+                        liquidity,
+                        UniswapV2Pair(pairUsdcDai).nonces(lpOwner),
+                        DEADLINE
+                    )
+                )
+            )
+        );
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(lpKey, digest);
+
+        uint256 usdcBefore = usdc.balanceOf(recipient);
+        uint256 daiBefore = dai.balanceOf(recipient);
+
+        vm.prank(lpOwner);
+        (uint256 amountA, uint256 amountB) = router.removeLiquidityWithPermit(
+            address(usdc), address(dai), liquidity, 0, 0, recipient, DEADLINE, false, v, r, s
+        );
+
+        assertTrue(amountA > 0 && amountB > 0, "amounts should be > 0");
+        assertEq(usdc.balanceOf(recipient), usdcBefore + amountA, "recipient should receive USDC");
+        assertEq(dai.balanceOf(recipient), daiBefore + amountB, "recipient should receive DAI");
+        assertEq(UniswapV2Pair(pairUsdcDai).balanceOf(lpOwner), 0, "owner LP should be burned");
+    }
+
+    /// @dev A permit signed by the wrong key is rejected by the pair's `permit`.
+    function test_removeLiquidityWithPermit_revertsInvalidSignature() public {
+        uint256 lpKey = 0xA11CE;
+        address lpOwner = vm.addr(lpKey);
+        uint256 liquidity = UniswapV2Pair(pairUsdcDai).balanceOf(address(this)) / 2;
+        UniswapV2Pair(pairUsdcDai).transfer(lpOwner, liquidity);
+
+        bytes32 digest = keccak256(
+            abi.encodePacked(
+                "\x19\x01",
+                UniswapV2Pair(pairUsdcDai).DOMAIN_SEPARATOR(),
+                keccak256(
+                    abi.encode(
+                        UniswapV2Pair(pairUsdcDai).PERMIT_TYPEHASH(),
+                        lpOwner,
+                        address(router),
+                        liquidity,
+                        UniswapV2Pair(pairUsdcDai).nonces(lpOwner),
+                        DEADLINE
+                    )
+                )
+            )
+        );
+        // Sign with a DIFFERENT key than the owner.
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(0xBEEF, digest);
+
+        vm.prank(lpOwner);
+        vm.expectRevert(bytes("UniswapV2: INVALID_SIGNATURE"));
         router.removeLiquidityWithPermit(
-            address(usdc), address(dai), 1e18, 0, 0, trader, DEADLINE, false, 0, bytes32(0), bytes32(0)
+            address(usdc), address(dai), liquidity, 0, 0, recipient, DEADLINE, false, v, r, s
         );
     }
 
-    function test_removeLiquidityETHWithPermit_isStub() public {
-        vm.prank(trader);
-        vm.expectRevert(bytes("Not implemented"));
-        router.removeLiquidityETHWithPermit(
-            address(usdc), 1e18, 0, 0, trader, DEADLINE, false, 0, bytes32(0), bytes32(0)
+    // ---------------------------------------------------------------------------------------------
+    // removeLiquidityETHWithPermit — Phase 5 / US3
+    // ---------------------------------------------------------------------------------------------
+
+    /// @dev Signed-permit path for a WETH pair: both token and unwrapped ETH reach `to`.
+    function test_removeLiquidityETHWithPermit_succeeds() public {
+        uint256 lpKey = 0xA11CE;
+        address lpOwner = vm.addr(lpKey);
+        uint256 liquidity = UniswapV2Pair(pairWethUsdc).balanceOf(address(this)) / 2;
+        UniswapV2Pair(pairWethUsdc).transfer(lpOwner, liquidity); // LP given, but NO approve
+
+        bytes32 digest = keccak256(
+            abi.encodePacked(
+                "\x19\x01",
+                UniswapV2Pair(pairWethUsdc).DOMAIN_SEPARATOR(),
+                keccak256(
+                    abi.encode(
+                        UniswapV2Pair(pairWethUsdc).PERMIT_TYPEHASH(),
+                        lpOwner,
+                        address(router),
+                        liquidity,
+                        UniswapV2Pair(pairWethUsdc).nonces(lpOwner),
+                        DEADLINE
+                    )
+                )
+            )
         );
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(lpKey, digest);
+
+        uint256 usdcBefore = usdc.balanceOf(recipient);
+        uint256 ethBefore = recipient.balance;
+
+        vm.prank(lpOwner);
+        (uint256 amountToken, uint256 amountETH) =
+            router.removeLiquidityETHWithPermit(address(usdc), liquidity, 0, 0, recipient, DEADLINE, false, v, r, s);
+
+        assertTrue(amountToken > 0 && amountETH > 0, "amounts should be > 0");
+        assertEq(usdc.balanceOf(recipient), usdcBefore + amountToken, "recipient should receive USDC");
+        assertEq(recipient.balance, ethBefore + amountETH, "recipient should receive ETH");
     }
 
     // ---------------------------------------------------------------------------------------------
