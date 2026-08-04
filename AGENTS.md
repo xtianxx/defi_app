@@ -1,7 +1,7 @@
 # PROJECT KNOWLEDGE BASE
 
-**Generated:** 2026-08-01
-**Commit:** 6177a81
+**Generated:** 2026-08-04
+**Commit:** 716e488
 **Branch:** 001-uniswap-v2-resume
 
 ## OVERVIEW
@@ -11,8 +11,9 @@ Monorepo for a Uniswap V2–style DEX resume project. Two independent packages �
 | Command | Purpose |
 |---|---|
 | `./scripts/test-unit.sh [--forge-only\|--vitest-only\|--watch]` | forge test -vvv + vitest run (default: both) |
-| `./scripts/test-e2e.sh [--unit-only\|--dev]` | Fresh anvil (31337:8545) → DeployDemo → sync → forge test → vitest → [full] next build + Playwright |
-| `./scripts/dev-deploy.sh [--dev]` | Fresh anvil → deploy demo → sync addresses → verify swap-ready; **anvil stays running**; `--dev` also starts `npm run dev` |
+| `./scripts/test-e2e.sh [--unit-only\|--no-playwright\|--dev]` | Fresh anvil (31337:8545) → DeployDemo → sync → forge test → vitest → [full] next build + Playwright |
+| `./scripts/test-e2e-phase5.sh [--playwright\|--dev]` | US3 (liquidity-removal) loop: anvil → DeployDemo → sync → **LP-readiness gate** (deployer LP > 0); `--playwright` filters to remove-liquidity specs |
+| `./scripts/dev-deploy.sh [--dev]` | Fresh anvil → deploy demo → sync addresses → verify swap-ready (WETH bal > 0); **anvil stays running**; `--dev` also starts `npm run dev` |
 
 Focused checks: `forge test --match-contract UniswapV2Pair -vvvv` (contracts/) · `npx vitest run tests/unit/<file>` · `npx tsc --noEmit` · `npm run lint` (frontend/).
 
@@ -29,7 +30,7 @@ frontend/       Next.js 15 App Router · React 19 · TS 6 strict · ethers v6 ·
   src/hooks/      useWeb3, useToken, usePair, useSwap, useLiquidity, useTwapPrice
   src/lib/        chains.ts (anvil 31337 + Sepolia), rpc.ts, tx.ts, contracts/ (generated bindings)
   tests/          unit/ (vitest + testing-library, jsdom); e2e/ and load/ are EMPTY
-scripts/        dev-deploy.sh, test-unit.sh, test-e2e.sh — the canonical dev loop
+scripts/        dev-deploy.sh, test-unit.sh, test-e2e.sh, test-e2e-phase5.sh — the canonical dev loop
 specs/001-uniswap-v2-resume/   spec.md · plan.md · tasks.md · quickstart.md (runnable guide)
 .github/workflows/test.yml     CI: contracts fmt→build(--sizes)→test; frontend tsc→lint→vitest→build
 .specify/       Speckit planning framework + constitution.md (5 principles; CI gates cite them)
@@ -40,6 +41,7 @@ specs/001-uniswap-v2-resume/   spec.md · plan.md · tasks.md · quickstart.md (
 |---|---|
 | Spec / plan / task breakdown | specs/001-uniswap-v2-resume/{spec,plan,tasks}.md |
 | Runnable validation guide | specs/001-uniswap-v2-resume/quickstart.md |
+| Research / data model / phase checklists | specs/001-uniswap-v2-resume/{research,data-model}.md · specs/001-uniswap-v2-resume/checklists/ |
 | Governing rules (v1.1.0) | .specify/memory/constitution.md |
 | Deploy scripts | contracts/script/DeployDemo.s.sol (+ core/DeployFactory.s.sol, router/DeployRouter.s.sol) |
 | Frontend contract bindings | frontend/src/lib/contracts/ (generated — see GOTCHAS) |
@@ -48,13 +50,13 @@ specs/001-uniswap-v2-resume/   spec.md · plan.md · tasks.md · quickstart.md (
 - **Packages independent** — no root workspace, no cross-package imports
 - **Tests**: contracts `test/*.t.sol` (`test_*()` / `testFuzz_*()`); frontend `tests/unit/*.test.{ts,tsx}`; `@/` alias → `src/` (tsconfig + vitest)
 - **ethers v6 split**: server reads = JsonRpcProvider in route handlers; client writes = BrowserProvider via Web3Provider context
-- **Generated bindings**: `sync-deploy.ts` overwrites **tracked** `addresses.ts` + `tokens.ts` and ignored `abis.generated.ts` — `forge build` + deploy first, then `node scripts/sync-deploy.ts <chainId>` (auto-finds `broadcast/DeployDemo.s.sol/<chainId>/run-latest.json`)
+- **Generated bindings**: `sync-deploy.ts` overwrites **tracked** `addresses.ts` + `tokens.ts` + `abis.ts`; `abis.generated.ts` is **gitignored** (legacy, not regenerated) — `forge build` + deploy first, then `node scripts/sync-deploy.ts <chainId>` (auto-finds `broadcast/DeployDemo.s.sol/<chainId>/run-latest.json`)
 - **No .env needed** for the anvil flow — chains/RPC hardcoded in `lib/chains.ts` (Sepolia uses public `rpc.sepolia.org`)
 
 ## GOTCHAS
 - **Spec source of truth is `specs/`** — `.omo/specs/` is a partial mirror that diverges; never edit there
 - **dev-deploy.sh leaves anvil running on purpose** (frontend needs the RPC; only failure paths kill it). Broadcasts need `--slow` or they can fail with EIP-1559 fee-estimation timeouts and never deploy
 - **CI e2e job is disabled** (`if: false`) pending wiring of DeployDemo + sync-deploy
-- **Deployer key** = anvil account 0, hardcoded in scripts: `0xac0974…ff80` (WETH+USDC+DAI+LP); accounts #1/#2 available for multi-user testing
+- **Deployer key** = anvil account 0, hardcoded in scripts: `0xac0974…ff80` (WETH+USDC+DAI+LP); accounts #1 (LP B: USDC+DAI+WBTC) / #2 (swapper: WETH+USDC+DAI) available for multi-user testing
 - **Coverage/gas CI gates are conditional**: coverage runs only if `contracts/src/**/*.sol` exists; gas snapshot only with a committed `contracts/.gas-snapshot`
 - **`contracts/broadcast/31337/` is gitignored** — re-run DeployDemo to refresh frontend bindings
