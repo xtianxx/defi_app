@@ -14,7 +14,7 @@ import {
   parseTokenAmount,
 } from "@/lib/format";
 import { getBlockExplorerTxUrl } from "@/lib/chains";
-import { useWeb3Context } from "@/providers/Web3Provider";
+import { useWeb3Context } from "@/providers/Web3Context";
 import { cn } from "@/lib/utils";
 
 type TokenSymbol = (typeof TOKEN_LIST)[number]["symbol"];
@@ -399,8 +399,6 @@ export function AddLiquidity() {
     hasAmountB,
     insufficientA,
     insufficientB,
-    needsApproveA,
-    needsApproveB,
     tokenAAddr,
     tokenBAddr,
   ]);

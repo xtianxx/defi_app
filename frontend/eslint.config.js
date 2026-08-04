@@ -4,6 +4,7 @@ import reactHooks from "eslint-plugin-react-hooks";
 import reactRefresh from "eslint-plugin-react-refresh";
 import tseslint from "typescript-eslint";
 import { defineConfig, globalIgnores } from "eslint/config";
+import nextVitals from "eslint-config-next/core-web-vitals";
 
 export default defineConfig([
   globalIgnores([
@@ -18,6 +19,7 @@ export default defineConfig([
     "postcss.config.mjs",
     "next.config.mjs",
   ]),
+  ...nextVitals,
   {
     files: ["**/*.{ts,tsx}"],
     extends: [

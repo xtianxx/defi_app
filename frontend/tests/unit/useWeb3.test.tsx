@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import type { ReactNode } from "react";
-import { Web3Provider, useWeb3Context } from "@/providers/Web3Provider";
+import { Web3Provider } from "@/providers/Web3Provider";
+import { useWeb3Context } from "@/providers/Web3Context";
 
 function setEthereum(eth: unknown) {
   if (eth) {

@@ -15,7 +15,7 @@ import {
   formatBasisPoints,
 } from "@/lib/format";
 import { getBlockExplorerTxUrl } from "@/lib/chains";
-import { useWeb3Context } from "@/providers/Web3Provider";
+import { useWeb3Context } from "@/providers/Web3Context";
 import { cn } from "@/lib/utils";
 
 type TokenSymbol = (typeof TOKEN_LIST)[number]["symbol"];

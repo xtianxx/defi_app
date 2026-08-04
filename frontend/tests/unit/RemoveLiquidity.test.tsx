@@ -37,7 +37,7 @@ vi.mock("@/hooks/usePair", () => ({
   getAmountOut: vi.fn(),
 }));
 
-vi.mock("@/providers/Web3Provider", () => ({
+vi.mock("@/providers/Web3Context", () => ({
   useWeb3Context: mockUseWeb3Context,
 }));
 

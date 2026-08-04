@@ -34,7 +34,7 @@ const mockIsDeploymentConfigured = vi.hoisted(() => vi.fn(() => true));
 vi.mock("@/hooks/useLiquidity", () => ({ useLiquidity: mockUseLiquidity, estimateOptimal: vi.fn() }));
 vi.mock("@/hooks/usePair", () => ({ usePair: mockUsePair, getAmountOut: vi.fn() }));
 vi.mock("@/hooks/useToken", () => ({ useToken: mockUseToken }));
-vi.mock("@/providers/Web3Provider", () => ({ useWeb3Context: mockUseWeb3Context }));
+vi.mock("@/providers/Web3Context", () => ({ useWeb3Context: mockUseWeb3Context }));
 vi.mock("@/lib/contracts/addresses", () => ({
   getDeployment: mockGetDeployment,
   isDeploymentConfigured: mockIsDeploymentConfigured,

@@ -4,7 +4,7 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { Contract, type TransactionReceipt } from "ethers";
 import { IERC20_ABI, IUniswapV2Router02_ABI } from "@/lib/contracts/abis";
 import { getDeployment, isDeploymentConfigured } from "@/lib/contracts/addresses";
-import { useWeb3Context } from "@/providers/Web3Provider";
+import { useWeb3Context } from "@/providers/Web3Context";
 import { decodeError, type ErrorCode } from "@/lib/errors";
 import { waitForReceipt } from "@/lib/tx";
 import { usePair, getAmountOut } from "@/hooks/usePair";

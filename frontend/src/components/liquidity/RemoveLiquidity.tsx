@@ -8,7 +8,7 @@ import { KNOWN_PAIRS, getToken, getTokenAddress } from "@/lib/contracts/tokens";
 import { getDeployment, isDeploymentConfigured } from "@/lib/contracts/addresses";
 import { formatTokenAmount, formatTokenAmountFixed } from "@/lib/format";
 import { getBlockExplorerTxUrl } from "@/lib/chains";
-import { useWeb3Context } from "@/providers/Web3Provider";
+import { useWeb3Context } from "@/providers/Web3Context";
 import { cn } from "@/lib/utils";
 
 type SymbolPair = readonly [TokenSymbol, TokenSymbol];
