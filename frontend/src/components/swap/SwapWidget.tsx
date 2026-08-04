@@ -15,7 +15,7 @@ import {
   formatBasisPoints,
 } from "@/lib/format";
 import { getBlockExplorerTxUrl } from "@/lib/chains";
-import { useWeb3Context } from "@/providers/Web3Provider";
+import { useWeb3Context } from "@/providers/Web3Context";
 import { cn } from "@/lib/utils";
 
 type TokenSymbol = (typeof TOKEN_LIST)[number]["symbol"];
@@ -527,7 +527,7 @@ export function SwapWidget() {
         <div className="mt-3 rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-700 dark:border-green-900 dark:bg-green-950 dark:text-green-400">
           <p className="font-medium">Swap confirmed ✓</p>
           <p className="mt-0.5 text-xs text-green-600 dark:text-green-500">
-            Note: MetaMask may show this transaction as "Failed" on local chains even though it succeeded — a known MetaMask display bug. The on-chain status shown here is authoritative.
+            Note: MetaMask may show this transaction as &quot;Failed&quot; on local chains even though it succeeded — a known MetaMask display bug. The on-chain status shown here is authoritative.
           </p>
           {explorerUrl ? (
             <a

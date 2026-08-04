@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { useWeb3Context } from "@/providers/Web3Provider";
+import { useWeb3Context } from "@/providers/Web3Context";
 import { SEPOLIA_CHAIN_ID } from "@/lib/chains";
 import { truncateAddress } from "@/lib/format";
 

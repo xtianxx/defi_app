@@ -8,7 +8,7 @@ const { useWeb3ContextMock, ContractMock, getDeploymentMock } = vi.hoisted(() =>
   getDeploymentMock: vi.fn(),
 }));
 
-vi.mock("@/providers/Web3Provider", () => ({
+vi.mock("@/providers/Web3Context", () => ({
   useWeb3Context: () => useWeb3ContextMock(),
 }));
 

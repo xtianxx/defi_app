@@ -1,6 +1,7 @@
 import { describe, it, expect, afterEach, vi } from "vitest";
 import { render, screen, cleanup, act, fireEvent, waitFor } from "@testing-library/react";
-import { Web3Provider, useWeb3Context } from "@/providers/Web3Provider";
+import { Web3Provider } from "@/providers/Web3Provider";
+import { useWeb3Context } from "@/providers/Web3Context";
 
 function ContextInspector() {
   const ctx = useWeb3Context();

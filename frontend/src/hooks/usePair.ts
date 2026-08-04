@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Contract, getAddress, keccak256, solidityPacked, ZeroAddress } from "ethers";
 import { IUniswapV2Factory_ABI, IUniswapV2Pair_ABI } from "@/lib/contracts/abis";
 import { getDeployment } from "@/lib/contracts/addresses";
-import { useWeb3Context } from "@/providers/Web3Provider";
+import { useWeb3Context } from "@/providers/Web3Context";
 import { isValidAddress } from "@/lib/contracts/tokens";
 
 export interface PairReserves {

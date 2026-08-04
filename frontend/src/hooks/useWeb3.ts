@@ -1,6 +1,6 @@
 "use client";
 
-import { useWeb3Context } from "@/providers/Web3Provider";
+import { useWeb3Context } from "@/providers/Web3Context";
 
 /**
  * Thin hook over the Web3Context. Components should use this rather than

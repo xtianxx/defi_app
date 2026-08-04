@@ -4,7 +4,7 @@ import { useCallback, useMemo, useState } from "react";
 import { Contract, Signature, ZeroAddress, type TransactionReceipt, type TransactionResponse } from "ethers";
 import { IERC20_ABI, IUniswapV2Factory_ABI, IUniswapV2Pair_ABI, IUniswapV2Router02_ABI } from "@/lib/contracts/abis";
 import { getDeployment, isDeploymentConfigured } from "@/lib/contracts/addresses";
-import { useWeb3Context } from "@/providers/Web3Provider";
+import { useWeb3Context } from "@/providers/Web3Context";
 import { decodeError, type ErrorCode } from "@/lib/errors";
 import { waitForReceipt } from "@/lib/tx";
 

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePair } from "@/hooks/usePair";
-import { useWeb3Context } from "@/providers/Web3Provider";
+import { useWeb3Context } from "@/providers/Web3Context";
 import { getDeployment, isDeploymentConfigured } from "@/lib/contracts/addresses";
 import { KNOWN_PAIRS, getTokenAddress } from "@/lib/contracts/tokens";
 import { formatTokenAmount } from "@/lib/format";

@@ -46,7 +46,13 @@ function loadCache(pool: `0x${string}`): [TwapSample, TwapSample] | null {
 function saveCache(pool: `0x${string}`, samples: [TwapSample, TwapSample]): void {
   if (typeof window === "undefined") return;
   try {
-    window.localStorage.setItem(STORAGE_PREFIX + pool, JSON.stringify(samples));
+    // JSON.stringify cannot serialize bigint; store priceCumulative as a string
+    // (loadCache parses it back with BigInt()).
+    const serialized = samples.map((s) => ({
+      priceCumulative: s.priceCumulative.toString(),
+      timestamp: s.timestamp,
+    }));
+    window.localStorage.setItem(STORAGE_PREFIX + pool, JSON.stringify(serialized));
   } catch {
     /* ignore quota errors */
   }
@@ -131,20 +137,24 @@ export function useTwapPrice(input: UseTwapPriceInput): TwapResult {
   }, [update]);
 
   // If we have reserves but no TWAP yet, fall back to spot price in Q112.112.
+  // Functional updates preserve a TWAP computed by the same effect pass —
+  // otherwise this effect would clobber `update()`'s "twap" result on mount.
   useEffect(() => {
     if (result.source === "twap") return;
     if (reserve0 === null || reserve1 === null || reserve0 === undefined || reserve1 === undefined) {
-      setResult((r) => ({ ...r, price0: null, price1: null, source: "spot-fallback" }));
+      setResult((r) => (r.source === "twap" ? r : { ...r, price0: null, price1: null, source: "spot-fallback" }));
       return;
     }
     if (reserve0 === 0n || reserve1 === 0n) {
-      setResult((r) => ({ ...r, price0: null, price1: null, source: "spot-fallback" }));
+      setResult((r) => (r.source === "twap" ? r : { ...r, price0: null, price1: null, source: "spot-fallback" }));
       return;
     }
     // Spot price0 = reserve1 * 2^112 / reserve0 (token0 in token1 units).
     const price0Spot = (reserve1 << 112n) / reserve0;
     const price1Spot = (reserve0 << 112n) / reserve1;
-    setResult({ price0: price0Spot, price1: price1Spot, windowSeconds: 0, source: "spot-fallback" });
+    setResult((r) =>
+      r.source === "twap" ? r : { price0: price0Spot, price1: price1Spot, windowSeconds: 0, source: "spot-fallback" },
+    );
   }, [reserve0, reserve1, result.source]);
 
   return result;

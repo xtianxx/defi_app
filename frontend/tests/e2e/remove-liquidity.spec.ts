@@ -502,7 +502,7 @@ test.describe("US3 Remove Liquidity — connected deployer", () => {
     await selectPair(page, "WETH / USDC");
     await page.getByRole("button", { name: "50%", exact: true }).click();
     const wethAmt = parseAmountText(
-      await page.getByText(/\d+\.\d+\s+WETH/).first().textContent(),
+      await page.getByText(/\d+\.\d+\s+(?:WETH|ETH \(WETH unwrap\))/).first().textContent(),
     );
     const usdcAmt = parseAmountText(
       await page.getByText(/\d+\.\d+\s+USDC/).first().textContent(),
@@ -718,7 +718,7 @@ test.describe("US3 Remove Liquidity — mobile 375×667", () => {
     const pct25 = page.getByRole("button", { name: "25%", exact: true });
     await expect(pct25).toBeVisible();
     await pct25.click();
-    await expect(page.getByText(/\d+\.\d+\s+WETH/).first()).toBeVisible();
+    await expect(page.getByText(/\d+\.\d+\s+(?:WETH|ETH \(WETH unwrap\))/).first()).toBeVisible();
 
     // Navbar chrome can overflow on 375px (account + chain label); assert the
     // Remove UI itself is usable: 25% preset fully inside the viewport.

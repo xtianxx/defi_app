@@ -1,6 +1,6 @@
 "use client";
 
-import { useWeb3Context } from "@/providers/Web3Provider";
+import { useWeb3Context } from "@/providers/Web3Context";
 import { usePair } from "@/hooks/usePair";
 import { useToken } from "@/hooks/useToken";
 import { getTokenAddress } from "@/lib/contracts/tokens";
