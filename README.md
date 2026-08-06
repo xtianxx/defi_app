@@ -1,5 +1,7 @@
 # Uniswap V2–Style DEX — Resume Project
 
+English | [中文版](README.zh-CN.md)
+
 ![CI](https://github.com/xtianxx/defi_app/actions/workflows/test.yml/badge.svg)
 
 A Uniswap V2–style decentralized exchange (DEX) built as a resume/portfolio project: an
