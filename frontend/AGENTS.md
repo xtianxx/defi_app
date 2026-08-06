@@ -3,7 +3,7 @@
 **Generated:** 2026-08-01
 
 ## OVERVIEW
-Next.js 15 App Router dApp for the Uniswap V2 DEX (migrated from the Vite scaffold). React 19, TS 6 strict, ethers v6, @tanstack/react-query, tailwind + shadcn/ui. Talks to contracts on anvil 31337 (local) or Sepolia.
+Next.js 15 App Router dApp for the Uniswap V2 DEX (migrated from the Vite scaffold). React 19, TS 6 strict, ethers v6, @tanstack/react-query, tailwind + shadcn/ui. Talks to contracts on the local anvil chain (chainId 31337).
 
 ## STRUCTURE
 ```
@@ -26,7 +26,7 @@ scripts/            sync-deploy.ts (regenerates contract bindings from forge bro
 - **TS6 strict**: noUnusedLocals, noUnusedParameters, erasableSyntaxOnly, verbatimModuleSyntax; `@/*` → `./src/*` in tsconfig + vitest
 - **ethers v6 split**: server reads via JsonRpcProvider in route handlers; client writes via BrowserProvider from Web3Provider context (not wagmi/viem)
 - **Generated bindings — never hand-edit**: `src/lib/contracts/addresses.ts`, `tokens.ts`, `abis.ts` are **tracked** and rewritten by `node scripts/sync-deploy.ts <chainId>` (auto-finds `../contracts/broadcast/DeployDemo.s.sol/<chainId>/run-latest.json`; run `forge build` first). `abis.generated.ts` is **gitignored** legacy — not regenerated
-- **No .env for local flow** — chains + RPC hardcoded in `lib/chains.ts` (anvil 31337, Sepolia via public `rpc.sepolia.org`)
+- **No .env for local flow** — chains + RPC hardcoded in `lib/chains.ts` (anvil 31337)
 - **route.ts handlers excluded from unit coverage** — intended for Playwright e2e (tests/e2e currently empty)
 
 ## GOTCHAS

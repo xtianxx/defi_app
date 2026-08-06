@@ -6,7 +6,7 @@
 
 ## Summary
 
-Build a Uniswap V2–style decentralized exchange as a resume/portfolio project. The contract layer is a Foundry project that re-implements the Uniswap V2 core (Factory, Pair, LP ERC-20) and a simplified periphery (Router + WETH9 + libraries), excluding flash swaps and multi-hop routing per FR-011. The frontend is a Next.js (App Router) + React + TypeScript + ethers.js v6 dApp that connects MetaMask, performs direct-pair swaps, manages liquidity (add/remove), and surfaces a portfolio/analytics view backed by on-chain TWAP-only prices. Deploy targets are local `anvil` (dev) and Sepolia testnet (demo).
+Build a Uniswap V2–style decentralized exchange as a resume/portfolio project. The contract layer is a Foundry project that re-implements the Uniswap V2 core (Factory, Pair, LP ERC-20) and a simplified periphery (Router + WETH9 + libraries), excluding flash swaps and multi-hop routing per FR-011. The frontend is a Next.js (App Router) + React + TypeScript + ethers.js v6 dApp that connects MetaMask, performs direct-pair swaps, manages liquidity (add/remove), and surfaces a portfolio/analytics view backed by on-chain TWAP-only prices. Deploy target is local `anvil` (chainId 31337) for both development and demo.
 
 Technical approach was grounded in best-practice research (see [research.md](./research.md)): the canonical Foundry UniswapV2 project layout (`src/core` + `src/router`), `viaIR` + optimizer for the oversized Router02 contract, dynamic `INIT_CODE_PAIR_HASH` handling, and the well-established `BrowserProvider` + `'use client'` hook pattern for ethers v6 in Next.js App Router.
 
@@ -21,11 +21,11 @@ Technical approach was grounded in best-practice research (see [research.md](./r
 **Storage**: No database. All state is on-chain (pair reserves, LP balances, cumulative TWAP prices). The frontend is stateless beyond React component state + read-through cache; configuration (token list, deployed addresses) is a versioned TS constant sourced from deployment artifacts.
 
 **Testing**:
-- Contracts: `forge test -vvv` (unit + integration); `forge test --coverage` ≥ 95% (Constitution III); fuzz tests for AMM math; fork tests vs Sepolia RPC; `forge snapshot` for gas regression.
+- Contracts: `forge test -vvv` (unit + integration); `forge test --coverage` ≥ 95% (Constitution III); fuzz tests for AMM math; `forge snapshot` for gas regression.
 - Frontend: Vitest (unit hooks/util tests) + Testing Library (component tests) + Playwright E2E against a local anvil chain.
 
 **Target Platform**:
-- Contracts: EVM — local `anvil` (chainId 31337) for dev; Sepolia testnet (chainId 11155111, hex `0xaa36a7`) for public demo.
+- Contracts: EVM — local `anvil` (chainId 31337) for development and demonstration.
 - Frontend: Modern evergreen browsers with MetaMask (or any EIP-1193 wallet); responsive desktop + mobile (FR-010).
 
 **Project Type**: Web application / dApp — two-package monorepo: `contracts/` (Foundry) + `frontend/` (Next.js).
@@ -57,9 +57,9 @@ Constitution: `.specify/memory/constitution.md` v1.0.0 (ratified 2026-07-23).
 |---|-----------|--------|-------|
 | I | Smart Contract Security First (NON-NEGOTIABLE) | ✅ PASS | Reentrancy guard on `UniswapV2Pair.swap` (the only value-transferring external call); Solidity 0.8+ overflow checks; access-control modifiers on `Factory.setFeeTo`/`setFeeToSetter` and Pair `mint`/`burn` restricted to Router via `sk`/lock pattern; input validation (non-zero amounts, deadline checks, slippage `amountOutMin`/`amountInMax`) in Router; comprehensive fuzz+edge tests. |
 | II | DeFi Protocol Compliance | ✅ PASS | Constant-product `x*y=k` invariant in `UniswapV2Pair.swap`; 0.3% swap fee (1/6 to `feeTo` when enabled); LP mint/burn proportional share math; TWAP via `price0CumulativeLast`/`price1CumulativeLast` + `blockTimestampLast`; gas snapshots documented. |
-| III | Test-Driven Development | ✅ PASS | Forge tests first; ≥95% coverage gate; fuzz tests for `getAmountOut`/sqrt math; fork tests vs Sepolia. |
+| III | Test-Driven Development | ✅ PASS | Forge tests first; ≥95% coverage gate; fuzz tests for `getAmountOut`/sqrt math. |
 | IV | Professional Code Quality | ✅ PASS | NatSpec on all public/external functions; `forge fmt` enforced; modular `core`/`router` split; gas optimizations documented (UQ112x112 fixed-point, `viaIR`). |
-| V | Documentation & Reproducibility | ✅ PASS | README setup; this plan + research.md + data-model.md + contracts/ + quickstart.md; deploy scripts for anvil + Sepolia; ABI export for frontend. |
+| V | Documentation & Reproducibility | ✅ PASS | README setup; this plan + research.md + data-model.md + contracts/ + quickstart.md; deploy scripts for anvil; ABI export for frontend. |
 
 ### Violations Requiring Justification (recorded in Complexity Tracking below)
 
@@ -171,9 +171,9 @@ frontend/                        # Replaced: Vite scaffold -> Next.js App Router
 │   │   └── useTwapPrice.ts            # TWAP window computation from cumulative prices
 │   ├── lib/
 │   │   ├── contracts/abis.ts          # imported from contracts/out (codegen)
-│   │   ├── contracts/addresses.ts     # per-chain deployed addresses (anvil/sepolia)
+│   │   ├── contracts/addresses.ts     # per-chain deployed addresses (anvil)
 │   │   ├── contracts/tokens.ts        # WETH/USDC/DAI/WBTC decimals/addresses
-│   │   ├── chains.ts                  # anvil (31337) + sepolia (11155111) config
+│   │   ├── chains.ts                  # anvil (31337) config
 │   │   ├── rpc.ts                     # JsonRpcProvider for server reads, BrowserProvider for client
 │   │   ├── errors.ts                  # error code -> human message map (spec clarification)
 │   │   └── format.ts                  # formatUnits by token decimals

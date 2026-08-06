@@ -10,15 +10,25 @@ import {IUniswapV2Pair} from "../../core/interfaces/IUniswapV2Pair.sol";
 ///         `getAmountsIn` helpers are intentionally REMOVED per R0.3 (no multi-hop, no dead code).
 library UniswapV2Library {
     /// @notice Sort two token addresses into (token0, token1) with token0 < token1.
-    /// @dev Reverts on identical addresses (no zero-address check here — caller is responsible).
+    /// @param tokenA First token (order-independent).
+    /// @param tokenB Second token (order-independent).
+    /// @return token0 The lower-address token.
+    /// @return token1 The higher-address token.
+    /// @dev Reverts with "UniswapV2Library: IDENTICAL_ADDRESSES" on identical addresses
+    ///      (no zero-address check here — caller is responsible).
     function sortTokens(address tokenA, address tokenB) internal pure returns (address token0, address token1) {
         require(tokenA != tokenB, "UniswapV2Library: IDENTICAL_ADDRESSES");
         (token0, token1) = tokenA < tokenB ? (tokenA, tokenB) : (tokenB, tokenA);
     }
 
     /// @notice Compute the CREATE2 pair address for `(tokenA, tokenB)` under `factory`.
+    /// @param factory The UniswapV2Factory address (pair registry / CREATE2 deployer).
+    /// @param tokenA First token (order-independent).
+    /// @param tokenB Second token (order-independent).
+    /// @return pair The deterministic pair address for the token pair.
     /// @dev Reads the init-code hash dynamically via `IUniswapV2Factory(factory).pairCodeHash()`
-    ///      (R0.4). Salt is `keccak256(abi.encodePacked(token0, token1))`.
+    ///      (R0.4). Salt is `keccak256(abi.encodePacked(token0, token1))`. Pure because the
+    ///      factory call goes through an interface with a `pure` implementation.
     function pairFor(address factory, address tokenA, address tokenB) internal pure returns (address pair) {
         (address token0, address token1) = sortTokens(tokenA, tokenB);
         bytes32 initCodeHash = IUniswapV2Factory(factory).pairCodeHash();
@@ -34,6 +44,11 @@ library UniswapV2Library {
     }
 
     /// @notice Fetch and order reserves for `(tokenA, tokenB)` from the pair deployed by `factory`.
+    /// @param factory The UniswapV2Factory address.
+    /// @param tokenA First token (order-independent).
+    /// @param tokenB Second token (order-independent).
+    /// @return reserveA The reserve of `tokenA` in the pair.
+    /// @return reserveB The reserve of `tokenB` in the pair.
     /// @dev Returns reserves ordered to match `(tokenA, tokenB)` — i.e. `reserveA` corresponds to
     ///      `tokenA`, regardless of which token is `token0` in the pair.
     function getReserves(address factory, address tokenA, address tokenB)
@@ -48,7 +63,13 @@ library UniswapV2Library {
     }
 
     /// @notice Exact-output amount for a 0.3% fee swap.
-    /// @dev Formula: `amountIn * 997 * reserveOut / (reserveIn * 1000 + amountIn * 997)`.
+    /// @param amountIn Input amount of the token being sold.
+    /// @param reserveIn Reserve of the input token in the pair.
+    /// @param reserveOut Reserve of the output token in the pair.
+    /// @return amountOut The output amount received for `amountIn`.
+    /// @dev Formula: `amountIn * 997 * reserveOut / (reserveIn * 1000 + amountIn * 997)`. The 997/1000
+    ///      factor applies the 0.3% fee. Reverts with "UniswapV2Library: INSUFFICIENT_INPUT_AMOUNT"
+    ///      if `amountIn == 0` and "UniswapV2Library: INSUFFICIENT_LIQUIDITY" if either reserve is 0.
     function getAmountOut(uint256 amountIn, uint256 reserveIn, uint256 reserveOut)
         internal
         pure
@@ -63,7 +84,14 @@ library UniswapV2Library {
     }
 
     /// @notice Exact-input amount required to buy `amountOut` from a 0.3% fee pool.
-    /// @dev Formula: `reserveIn * amountOut * 1000 / ((reserveOut - amountOut) * 997) + 1`.
+    /// @param amountOut Desired output amount.
+    /// @param reserveIn Reserve of the input token in the pair.
+    /// @param reserveOut Reserve of the output token in the pair.
+    /// @return amountIn The input amount required to receive exactly `amountOut`.
+    /// @dev Formula: `reserveIn * amountOut * 1000 / ((reserveOut - amountOut) * 997) + 1` (the +1
+    ///      rounds up so the K invariant can never be violated). Reverts with "UniswapV2Library:
+    ///      INSUFFICIENT_OUTPUT_AMOUNT" if `amountOut == 0` and "UniswapV2Library:
+    ///      INSUFFICIENT_LIQUIDITY" if either reserve is 0.
     function getAmountIn(uint256 amountOut, uint256 reserveIn, uint256 reserveOut)
         internal
         pure
@@ -78,8 +106,13 @@ library UniswapV2Library {
 
     /// @notice Compute the equivalent amount of tokenB for a given amount of tokenA at the
     ///         current pool ratio (no fees, no slippage — purely the constant-product quote).
+    /// @param amountA Amount of tokenA to quote.
+    /// @param reserveA Reserve of tokenA in the pair.
+    /// @param reserveB Reserve of tokenB in the pair.
+    /// @return amountB The equivalent amount of tokenB.
     /// @dev Formula: `amountB = amountA * reserveB / reserveA`.
-    ///      Reverts if `amountA == 0` or either reserve is zero.
+    ///      Reverts with "UniswapV2Library: INSUFFICIENT_AMOUNT" if `amountA == 0` and
+    ///      "UniswapV2Library: INSUFFICIENT_LIQUIDITY" if either reserve is zero.
     function quote(uint256 amountA, uint256 reserveA, uint256 reserveB) internal pure returns (uint256 amountB) {
         require(amountA > 0, "UniswapV2Library: INSUFFICIENT_AMOUNT");
         require(reserveA > 0 && reserveB > 0, "UniswapV2Library: INSUFFICIENT_LIQUIDITY");

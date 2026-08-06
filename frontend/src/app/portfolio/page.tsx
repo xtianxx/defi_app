@@ -5,6 +5,7 @@ import { ArrowLeftRight, Minus, Plus } from "lucide-react";
 import { PositionCard } from "@/components/portfolio/PositionCard";
 import { usePair } from "@/hooks/usePair";
 import { usePortfolio } from "@/hooks/usePortfolio";
+import { useEarnedFees } from "@/hooks/useEarnedFees";
 import type { HistoryEntry } from "@/hooks/usePortfolio";
 import { useTwapPrice } from "@/hooks/useTwapPrice";
 import { useWeb3Context } from "@/providers/Web3Context";
@@ -100,6 +101,14 @@ function PositionFetcher({ pair, onUpdate }: PositionFetcherProps) {
     reserve1: pairResult.reserves?.reserve1 ?? null,
   });
 
+  const earnedFees = useEarnedFees({
+    pairAddress: pairResult.pairAddress,
+    lpBalance: pairResult.lpBalance,
+    reserve0: pairResult.reserves?.reserve0 ?? null,
+    reserve1: pairResult.reserves?.reserve1 ?? null,
+    totalSupply: pairResult.liquidity,
+  });
+
   if (isLoading) {
     return (
       <div className="animate-pulse space-y-3 rounded-lg border border-border bg-card p-4 shadow-sm">
@@ -126,6 +135,10 @@ function PositionFetcher({ pair, onUpdate }: PositionFetcherProps) {
   const reserveA = tokenAIsToken0 ? reserves.reserve0 : reserves.reserve1;
   const reserveB = tokenAIsToken0 ? reserves.reserve1 : reserves.reserve0;
 
+  // Fees arrive in token0/token1 order — remap to symbolA/symbolB like reserves.
+  const feesEarned0 = tokenAIsToken0 ? earnedFees.feesEarned0 : earnedFees.feesEarned1;
+  const feesEarned1 = tokenAIsToken0 ? earnedFees.feesEarned1 : earnedFees.feesEarned0;
+
   // price0 = token1-per-token0 (Q112.112) → pick the direction that prices
   // symbolA in terms of symbolB.
   const priceAB = tokenAIsToken0 ? twap.price0 : twap.price1;
@@ -148,6 +161,8 @@ function PositionFetcher({ pair, onUpdate }: PositionFetcherProps) {
         reserve1={reserveB}
         totalSupply={liquidity}
         lpBalance={lpBalance}
+        feesEarned0={feesEarned0}
+        feesEarned1={feesEarned1}
       />
       <p className="px-1 text-xs text-muted-foreground">
         Price source: {sourceLabel}

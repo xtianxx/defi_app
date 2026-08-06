@@ -95,7 +95,7 @@ Two samples are taken: the current cumulative price (live RPC read), and the cum
 **Rationale**: Spec clarification mandates "on-chain TWAP only" — no Chainlink, no off-chain price API. Uniswap V2's `price{0,1}CumulativeLast` accumulators are the canonical on-chain TWAP source (Permitted by Constitution II: "Price oracle implementation following TWAP patterns").
 
 **Caveats**:
-- TWAP requires either (a) an archive RPC endpoint, or (b) the client periodically sampling and caching cumulative prices. For the resume demo we use Alchemy/Infura Sepolia archive endpoints + a client-side rolling cache.
+- TWAP requires either (a) an archive RPC endpoint, or (b) the client periodically sampling and caching cumulative prices. For the Anvil-only resume demo we use the client-side rolling cache (the local chain has no archive endpoint unless started with `--archive`).
 - On anvil without `--archive`, TWAP degrades to spot; documented in UI.
 
 **Alternatives**:
@@ -134,7 +134,7 @@ Key v6 subtleties (from `rocco.me`):
 - After `tx.wait()`, `receipt.status === 1` must be checked — a mined tx can still have reverted.
 - Differentiate rejection (`code === 4001` / `ACTION_REJECTED`) from real failures to avoid scary toasts on user-cancel.
 - Gas estimation runs a `staticCall` first; a revert here throws *before* any popup — catch and explain ("can't simulate; probably insufficient balance / paused contract").
-- Chain switching via `wallet_switchEthereumChain` (Sepolia `0xaa36a7`); on code `4902` fall back to `wallet_addEthereumChain` (spec edge case: network switching during tx).
+- Chain switching via `wallet_switchEthereumChain` (anvil `0x7a69` = 31337); on code `4902` fall back to `wallet_addEthereumChain` (spec edge case: network switching during tx).
 
 **Server vs client split** (`markaicode.com`):
 - All wallet-interacting components carry `'use client'`.
@@ -172,7 +172,7 @@ Key v6 subtleties (from `rocco.me`):
 |-------|-------|--------------------|
 | user-rejection | `4001` / `ACTION_REJECTED` | "You declined the signature. No transaction was sent." |
 | wallet-missing | (no `window.ethereum`) | "Install MetaMask or another EIP-1193 wallet." |
-| wrong-network | chainId mismatch | `Wrong network. This dApp runs on Sepolia (or local Anvil). Switch network?` + switch action. |
+| wrong-network | chainId mismatch | `Wrong network. This dApp runs on the local anvil chain (chainId 31337). Switch network?` + switch action. |
 | insufficient-balance | `staticCall` revert on transfer | "Insufficient ${tokenSymbol} balance to swap." |
 | allowance | allowance < amount | "Approve ${tokenSymbol} spending first." |
 | slippage | `UniswapV2: INSUFFICIENT_OUTPUT_AMOUNT` | "Slippage moved past your minimum. Increase tolerance or retry." |
@@ -191,7 +191,7 @@ Custom contract error selectors are decoded against a generated `abis.ts` error 
 
 ## R0.9 — Deployment artifacts + frontend ABI sync (NEEDS CLARIFICATION: cross-package coupling)
 
-**Decision**: A single `DeployDemo.s.sol` Forge script deploys (anvil): the four MockERC20s (or, for Sepolia, reuses real test tokens / WBTC-style fixtures), WETH9, Factory, Router02, and seeds initial liquidity for two demo pairs (e.g., WETH/USDC, WETH/DAI). On success, Forge writes addresses to `broadcast/<chainId>/run-latest.json`. A small post-deploy Node script (`frontend/scripts/sync-deploy.ts`) reads the latest broadcast, resolves the deployed addresses + ABIs from `contracts/out/`, and writes `frontend/src/lib/contracts/addresses.ts` and refreshes `abis.ts`. This keeps the two packages decoupled at runtime (no live filesystem reads at build).
+**Decision**: A single `DeployDemo.s.sol` Forge script deploys on anvil: the four MockERC20s, WETH9, Factory, Router02, and seeds initial liquidity for two demo pairs (e.g., WETH/USDC, WETH/DAI). On success, Forge writes addresses to `broadcast/<chainId>/run-latest.json`. A small post-deploy Node script (`frontend/scripts/sync-deploy.ts`) reads the latest broadcast, resolves the deployed addresses + ABIs from `contracts/out/`, and writes `frontend/src/lib/contracts/addresses.ts` and refreshes `abis.ts`. This keeps the two packages decoupled at runtime (no live filesystem reads at build).
 
 **Rationale**: Avoids address/ABI drift between contracts and frontend — the most common resume-project integration bug. The dependency flows one direction (contracts -> frontend) via a generated file under the frontend package.
 

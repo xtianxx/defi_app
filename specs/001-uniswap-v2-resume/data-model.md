@@ -31,7 +31,7 @@ A demo ERC-20 (or WETH9) listed in the hardcoded token set.
 | `symbol` | string | WETH / USDC / DAI / WBTC | hardcode per spec Token Configuration |
 | `name` | string | non-empty | hardcode / `ERC20.name()` |
 | `decimals` | uint8 | WETH=18, USDC=6, DAI=18, WBTC=8 | spec + `ERC20.decimals()` |
-| `chainId` | number | 31337 (anvil) or 11155111 (sepolia) | `lib/chains.ts` |
+| `chainId` | number | 31337 (anvil) | `lib/chains.ts` |
 
 **Derived read** (per user): `balance(address) -> bigint` via `useToken`.
 **Token set is fixed** (FR: only WETH/USDC/DAI/WBTC). Adding a token = code change in `tokens.ts`; no on-chain governance.
@@ -151,7 +151,7 @@ Frontend-only session state owned by the `useWeb3` hook + `Web3Provider` React c
 |-------|------|-----------|-----------|
 | `status` | `'idle' \| 'connecting' \| 'ready' \| 'error'` | one at a time | connect() lifecycle |
 | `account` | `0x${string}` \| null | EIP-55 checksum | set on connect; cleared on `accountsChanged` -> [] |
-| `chainId` | number \| null | must be 31337 or 11155111 to act | `chainChanged` -> reload (EIP-1193 mandate) |
+| `chainId` | number \| null | must be 31337 (anvil) to act | `chainChanged` -> reload (EIP-1193 mandate) |
 | `provider` | `BrowserProvider` \| null | wraps `window.ethereum` | created on connect |
 | `signer` | `JsonRpcSigner` \| null | signer.getAccount() == account | (async in v6) |
 | `error` | `{code, message} \| null` | from `lib/errors.ts` map | surfaced to UI toast |

@@ -129,7 +129,7 @@ Hook: `frontend/src/hooks/useLiquidity.ts` (`removeLiquidity` / `removeLiquidity
 | ID | Pre | Steps | Expected | Pass |
 |---|---|---|---|---|
 | E2E-US3-G-01 | wallet disconnected | Open `/liquidity` → Remove tab | Position list empty or hidden; main button `Connect wallet` (disabled action) | button reads `Connect wallet` |
-| E2E-US3-G-02 | connected to wrong network (e.g. Sepolia while anvil expected) | Open Remove tab | Wrong-network banner from `ConnectButton`; RemoveLiquidity not visible (`isVisible` false) | wrong-network banner visible; component hidden |
+| E2E-US3-G-02 | connected to an unsupported network (any chainId other than 31337) | Open Remove tab | Wrong-network banner from `ConnectButton`; RemoveLiquidity not visible (`isVisible` false) | wrong-network banner visible; component hidden |
 | E2E-US3-G-03 | anvil seeded; connect **anvil account #2** (swapper, no LP) | Open Remove tab | Empty state `No active positions — add liquidity first.`; no rows render | empty-state text visible; zero rows |
 | E2E-US3-G-04 | A-02 | Set slippage `0.1%`, then attempt removal right after a swap that moves the pool >0.1% | Tx reverts with `INSUFFICIENT_A_AMOUNT` or `INSUFFICIENT_B_AMOUNT`; decoded error shown | error panel shows slippage selector |
 | E2E-US3-G-05 | A-02 | Force deadline expiry (set `deadlineSeconds` path to past — requires hook-level override or anvil `evm_setNextBlockTimestamp` far future) | Tx reverts with `EXPIRED`; decoded error shown | error panel shows EXPIRED |
@@ -191,4 +191,4 @@ Hook: `frontend/src/hooks/useLiquidity.ts` (`removeLiquidity` / `removeLiquidity
 - Add-liquidity e2e → US2 (separate checklist).
 - Portfolio e2e → US4 (T060).
 - Load testing → T074 (k6).
-- Sepolia public demo → quickstart.md Scenario B / T072.
+- Public demo → de-scoped: project is Anvil-only (T072 `[N/A]`; quickstart.md Scenario B removed).

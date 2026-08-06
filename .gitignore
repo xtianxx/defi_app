@@ -24,3 +24,6 @@ Thumbs.db
 
 # log
 .anvil.log
+
+# CodeGraph (local code-index daemon; symlink to ~/.omo/codegraph/)
+.codegraph

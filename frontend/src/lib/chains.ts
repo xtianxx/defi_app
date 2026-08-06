@@ -15,8 +15,6 @@ export interface ChainConfig {
 }
 
 export const ANVIL_CHAIN_ID = 31337;
-export const SEPOLIA_CHAIN_ID = 11155111;
-export const SEPOLIA_HEX = "0xaa36a7" as const;
 
 export const CHAINS: Record<number, ChainConfig> = {
   [ANVIL_CHAIN_ID]: {
@@ -26,14 +24,6 @@ export const CHAINS: Record<number, ChainConfig> = {
     rpcUrl: "http://127.0.0.1:8545",
     explorerUrl: "http://127.0.0.1:8545",
     nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
-  },
-  [SEPOLIA_CHAIN_ID]: {
-    chainId: SEPOLIA_CHAIN_ID,
-    hex: SEPOLIA_HEX,
-    name: "Sepolia",
-    rpcUrl: "https://rpc.sepolia.org",
-    explorerUrl: "https://sepolia.etherscan.io",
-    nativeCurrency: { name: "Sepolia Ether", symbol: "ETH", decimals: 18 },
   },
 };
 

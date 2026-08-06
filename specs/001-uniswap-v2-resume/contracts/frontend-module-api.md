@@ -58,7 +58,7 @@ interface UseWeb3 {
 ```
 
 **Contract calls**: none directly — wraps `window.ethereum` (EIP-1193).
-**Event handlers**: `accountsChanged` → reconnect or reset to `idle` on `[]`; `chainChanged` → `window.location.reload()` (EIP-1193 mandate). On wrong network, expose `switchChain(SEPOLIA_CHAIN_ID = 11155111)`.
+**Event handlers**: `accountsChanged` → reconnect or reset to `idle` on `[]`; `chainChanged` → `window.location.reload()` (EIP-1193 mandate). On wrong network, expose `switchChain(ANVIL_CHAIN_ID = 31337)`.
 
 ---
 
@@ -220,7 +220,6 @@ export const DEPLOYMENTS: Record<number, {
   tokens: Record<'WETH' | 'USDC' | 'DAI' | 'WBTC', `0x${string}`>;
 }> = {
   31337: { /* generated from broadcast/31337/run-latest.json */ },
-  11155111: { /* generated from broadcast/11155111/run-latest.json */ },
 };
 ```
 

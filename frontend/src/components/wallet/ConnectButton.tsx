@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { useWeb3Context } from "@/providers/Web3Context";
-import { SEPOLIA_CHAIN_ID } from "@/lib/chains";
+import { ANVIL_CHAIN_ID } from "@/lib/chains";
 import { truncateAddress } from "@/lib/format";
 
 /**
@@ -52,7 +52,7 @@ export function ConnectButton() {
           <button
             type="button"
             onClick={() => {
-              void switchChain(SEPOLIA_CHAIN_ID);
+              void switchChain(ANVIL_CHAIN_ID);
             }}
             className="rounded-md border border-red-500 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50"
           >
