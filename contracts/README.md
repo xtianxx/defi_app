@@ -1,66 +1,39 @@
-## Foundry
+# contracts — Uniswap V2–style DEX (Foundry)
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
+Foundry package for the [Uniswap V2–style DEX](../README.md): a re-implementation of
+Uniswap V2 core and periphery. Solidity ^0.8.19, via-IR, optimizer 200 runs.
 
-Foundry consists of:
-
-- **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
-- **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
-- **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
-- **Chisel**: Fast, utilitarian, and verbose solidity REPL.
-
-## Documentation
-
-https://book.getfoundry.sh/
+- **Core** — `src/core/`: `Factory`, `Pair`, LP `ERC20` (+ `Math`, `SafeMath`,
+  `UQ112x112`). Constant-product AMM (`x·y=k`), 0.3% swap fee, TWAP price oracles.
+- **Router** — `src/router/`: `Router02`, `WETH9`, `UniswapV2Library`, `TransferHelper`.
+- **Scripts** — `script/DeployDemo.s.sol`: deploys Factory + Router + WETH9 + 4 tokens
+  with 2 seeded pairs (main demo); `core/DeployFactory.s.sol`, `router/DeployRouter.s.sol`.
+- **Tests** — `test/`: unit + fuzz tests for core and router.
 
 ## Usage
 
-### Build
-
 ```shell
-$ forge build
+forge build            # build (via-IR)
+forge test -vvv        # run all tests
+forge test --coverage  # ≥ 95% line coverage
+forge fmt              # format
+forge snapshot         # gas snapshot
 ```
 
-### Test
+Deploy the demo against a local anvil (chainId 31337):
 
 ```shell
-$ forge test
+forge script script/DeployDemo.s.sol:DeployDemo \
+  --rpc-url http://127.0.0.1:8545 \
+  --broadcast --slow \
+  --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
 ```
 
-### Format
+Then sync the deployed addresses + ABIs into the frontend:
 
 ```shell
-$ forge fmt
+node ../frontend/scripts/sync-deploy.ts ../contracts/broadcast/31337/run-latest.json 31337
 ```
 
-### Gas Snapshots
-
-```shell
-$ forge snapshot
-```
-
-### Anvil
-
-```shell
-$ anvil
-```
-
-### Deploy
-
-```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
-```
-
-### Cast
-
-```shell
-$ cast <subcommand>
-```
-
-### Help
-
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
-```
+For the full local loop (fresh anvil → deploy → sync → tests), run
+`../scripts/test-e2e.sh` or `../scripts/dev-deploy.sh` from the repo root.
