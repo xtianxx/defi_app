@@ -1,8 +1,6 @@
 # Uniswap V2–Style DEX — Resume Project
 
-![CI](https://github.com/<owner>/defi_app/actions/workflows/test.yml/badge.svg)
-
-> Replace `<owner>` in the CI badge URL with the GitHub owner of this repository.
+![CI](https://github.com/xtianxx/defi_app/actions/workflows/test.yml/badge.svg)
 
 A Uniswap V2–style decentralized exchange (DEX) built as a resume/portfolio project: an
 on-chain AMM with constant-product pricing (`x·y=k`), a 0.3% swap fee, TWAP price oracles,
