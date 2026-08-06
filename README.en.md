@@ -1,6 +1,6 @@
 # Uniswap V2–Style DEX — Resume Project
 
-English | [中文版](README.md)
+[中文版](README.md) | English
 
 ![CI](https://github.com/xtianxx/defi_app/actions/workflows/test.yml/badge.svg)
 

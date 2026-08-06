@@ -1,6 +1,6 @@
 # Uniswap V2 风格去中心化交易所 — 简历项目
 
-[English](README.en.md) | 中文
+中文 | [English](README.en.md)
 
 ![CI](https://github.com/xtianxx/defi_app/actions/workflows/test.yml/badge.svg)
 
