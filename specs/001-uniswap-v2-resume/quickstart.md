@@ -13,7 +13,6 @@
 - Foundry (`forge`, `cast`, `anvil`) — `curl -L https://foundry.paradigm.xyz | bash && foundryup`
 - Node.js ≥ 20 and a package manager (npm/pnpm/bun)
 - MetaMask (or any EIP-1193 wallet) installed for browser flows
-- For Sepolia demo: a Sepolia RPC URL (Alchemy/Infura, with archive access for TWAP) and a funded deployer wallet
 
 ---
 
@@ -93,41 +92,10 @@ npm run test:e2e                   # Playwright against anvil (auto-seeds via De
 
 ---
 
-## Scenario B — Sepolia testnet public demo
+## Scenario B — removed
 
-**Goal**: a public, shareable resume demonstration.
-
-### B.1 Deploy
-
-```bash
-cd contracts
-forge script script/DeployDemo.s.sol:DeployDemo \
-  --rpc-url $SEPOLIA_RPC_URL \
-  --broadcast --verify \
-  --private-key $SEPOLIA_DEPLOYER_PK \
-  --etherscan-api-key $ETHERSCAN_API_KEY \
-  -vvv
-```
-
-**Expected**: addresses verified on Sepolia Etherscan. (Sepolia archive access required at runtime for TWAP; otherwise UI degrades to labeled "spot (no archive)" — see `useTwapPrice`.)
-
-### B.2 Sync + publish frontend
-
-```bash
-cd ../frontend
-node scripts/sync-deploy.ts ../contracts/broadcast/11155111/run-latest.json 11155111
-npm run build
-# deploy to Vercel (or `npm run preview`); set the public URL as the MetaMask "Connected site"
-```
-
-### B.3 Validation (manual, with any funded Sepolia wallet)
-
-1. Open the deployed app — wallet prompts to switch to Sepolia (`wrong-network` handler; SC edge case).
-2. Swap `WETH → USDC` on the seeded Sepolia pairs (see A.5 steps; expect identical UX).
-3. Provide + remove liquidity on a Sepolia pair; verify portfolio updates.
-4. Open a block explorer link to each tx from the portfolio history.
-
-**Expected**: all core operations succeed on Sepolia with real test gas; no `high`/`critical` static-analysis findings (Constitution `forge fmt --check`, plus `slither` if installed — see phase 2 tasks).
+> **Scenario B removed** — this project is Anvil-only. Local testing runs on the anvil
+> chain (chainId 31337); see Scenario A above.
 
 ---
 

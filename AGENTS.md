@@ -28,7 +28,7 @@ contracts/      Foundry, solc 0.8.19, via_ir, optimizer 200 runs
 frontend/       Next.js 15 App Router · React 19 · TS 6 strict · ethers v6 · tailwind+shadcn · react-query
   src/app/        /swap /liquidity /portfolio /debug pages + api/reserves/route.ts (server-side RPC reads)
   src/hooks/      useWeb3, useToken, usePair, useSwap, useLiquidity, useTwapPrice
-  src/lib/        chains.ts (anvil 31337 + Sepolia), rpc.ts, tx.ts, contracts/ (generated bindings)
+  src/lib/        chains.ts (anvil 31337), rpc.ts, tx.ts, contracts/ (generated bindings)
   tests/          unit/ (vitest + testing-library, jsdom); e2e/ and load/ are EMPTY
 scripts/        dev-deploy.sh, test-unit.sh, test-e2e.sh, test-e2e-phase5.sh — the canonical dev loop
 specs/001-uniswap-v2-resume/   spec.md · plan.md · tasks.md · quickstart.md (runnable guide)
@@ -51,7 +51,7 @@ specs/001-uniswap-v2-resume/   spec.md · plan.md · tasks.md · quickstart.md (
 - **Tests**: contracts `test/*.t.sol` (`test_*()` / `testFuzz_*()`); frontend `tests/unit/*.test.{ts,tsx}`; `@/` alias → `src/` (tsconfig + vitest)
 - **ethers v6 split**: server reads = JsonRpcProvider in route handlers; client writes = BrowserProvider via Web3Provider context
 - **Generated bindings**: `sync-deploy.ts` overwrites **tracked** `addresses.ts` + `tokens.ts` + `abis.ts`; `abis.generated.ts` is **gitignored** (legacy, not regenerated) — `forge build` + deploy first, then `node scripts/sync-deploy.ts <chainId>` (auto-finds `broadcast/DeployDemo.s.sol/<chainId>/run-latest.json`)
-- **No .env needed** for the anvil flow — chains/RPC hardcoded in `lib/chains.ts` (Sepolia uses public `rpc.sepolia.org`)
+- **No .env needed** — chains/RPC hardcoded in `lib/chains.ts` for the anvil chain (chainId 31337)
 
 ## GOTCHAS
 - **Spec source of truth is `specs/`** — `.omo/specs/` is a partial mirror that diverges; never edit there

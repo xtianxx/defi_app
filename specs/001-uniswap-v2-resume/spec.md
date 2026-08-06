@@ -12,7 +12,7 @@
 
 ### Session 2026-07-26
 
-- Q: Which Ethereum network(s) should the app target for demonstration? → A: Local anvil for development + Sepolia testnet for final deployment
+- Q: Which Ethereum network(s) should the app target for demonstration? → A: Local anvil (chainId 31337) for development and final demonstration
 - Q: Which tokens should be available for swap/liquidity by default? → A: Hardcoded demo tokens (WETH, USDC, DAI, WBTC)
 - Q: How should token prices be displayed to users in the UI? → A: On-chain TWAP only
 - Q: Which features should be explicitly OUT of scope for this resume project? → A: No flash swaps + No multi-hop routing
@@ -21,15 +21,15 @@
 ## Deployment Target
 
 - **Development**: Local anvil instance for rapid iteration, zero gas costs, and full test control
-- **Production Demo**: Sepolia testnet for public demonstration with real wallet UX
-- **Contract Deployment**: Forge scripts targeting both anvil (local) and Sepolia (testnet)
-- **RPC Configuration**: Anvil default (http://127.0.0.1:8545) for dev; Sepolia public RPC or user-configured provider for testnet
+- **Production Demo**: Local anvil (chainId 31337) for demonstration with real wallet UX
+- **Contract Deployment**: Forge scripts targeting the local anvil chain (chainId 31337)
+- **RPC Configuration**: Anvil default (http://127.0.0.1:8545)
 
 ## Token Configuration
 
 - **Token List**: Hardcoded set of demo tokens for development and demo consistency
 - **Core Tokens**: WETH, USDC, DAI, WBTC
-- **Pair Initialization**: Token pairs created during deployment script (anvil) or manual setup (Sepolia)
+- **Pair Initialization**: Token pairs created during the deployment script (anvil)
 - **Decimals**: Standard ERC-20 decimals (WETH=18, USDC=6, DAI=18, WBTC=8)
 
 ## User Scenarios & Testing *(mandatory)*
@@ -153,8 +153,7 @@ As a reviewer, I want to view my liquidity positions and portfolio summary so th
 - Users have MetaMask or similar Web3 wallet installed and configured
 - Target network has sufficient liquidity in token pairs for meaningful swaps
 - Users understand basic DeFi concepts (swapping, liquidity provision)
-- Project will use local anvil for development and Sepolia testnet for final demonstration to avoid real financial risk
+- Project will use local anvil (chainId 31337) for development and final demonstration to avoid real financial risk
 - Existing decentralized exchange contract deployments will be used where possible for compatibility
 - Frontend will be responsive and work on both desktop and mobile devices
-- All transactions will be simulated (anvil) or performed on testnet (Sepolia) for resume demonstration
-- Sepolia demo will use public RPC or user-configured provider; RPC reliability may vary
+- All transactions will be simulated on local anvil for resume demonstration
