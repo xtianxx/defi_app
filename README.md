@@ -1,26 +1,25 @@
-# Uniswap V2–Style DEX — Resume Project
+# Uniswap V2 风格去中心化交易所 — 简历项目
 
-![CI](https://github.com/<owner>/defi_app/actions/workflows/test.yml/badge.svg)
+中文 | [English](README.en.md)
 
-> Replace `<owner>` in the CI badge URL with the GitHub owner of this repository.
+![CI](https://github.com/xtianxx/defi_app/actions/workflows/test.yml/badge.svg)
 
-A Uniswap V2–style decentralized exchange (DEX) built as a resume/portfolio project: an
-on-chain AMM with constant-product pricing (`x·y=k`), a 0.3% swap fee, TWAP price oracles,
-and a full web dApp that connects to it via MetaMask.
+一个 Uniswap V2 风格的去中心化交易所（DEX），作为**简历/作品集项目**开发：链上
+AMM 采用恒定乘积定价（`x·y=k`）、0.3% 交易手续费、TWAP 价格预言机，并配有通过
+MetaMask 连接合约的完整 Web dApp。
 
-The repository is a two-package monorepo:
+本仓库是包含两个独立包的 monorepo：
 
-- **`contracts/`** — Foundry project re-implementing Uniswap V2 core (`Factory`, `Pair`, LP
-  `ERC20`) and a simplified periphery (`Router02`, `WETH9`, `UniswapV2Library`,
-  `TransferHelper`), excluding flash swaps and multi-hop routing (FR-011).
-- **`frontend/`** — Next.js 15 (App Router) dApp: swap, add/remove liquidity, and a
-  portfolio view backed by on-chain TWAP-only prices. ethers v6, React 19, Tailwind +
-  shadcn/ui, Vitest + Playwright.
+- **`contracts/`** — Foundry 项目，重新实现了 Uniswap V2 核心（`Factory`、`Pair`、
+  LP `ERC20`）和简化版外围（`Router02`、`WETH9`、`UniswapV2Library`、
+  `TransferHelper`），不含闪电兑换和多跳路由（FR-011）。
+- **`frontend/`** — Next.js 15（App Router）dApp：兑换、添加/移除流动性，以及基于
+  链上 TWAP 价格的持仓视图。ethers v6、React 19、Tailwind + shadcn/ui、Vitest +
+  Playwright。
 
-The deploy target is local `anvil` (chainId 31337, deterministic dev loop). No real
-value is ever at risk.
+部署目标为本地 `anvil`（chainId 31337，确定性开发循环），全程不涉及真实资金。
 
-## Architecture
+## 架构
 
 ```text
 ┌──────────────────────────────────────────────────────────────────────────┐
@@ -50,30 +49,29 @@ value is ever at risk.
 └──────────────────────────────────────────────────────────────────────────┘
 ```
 
-The two packages are coupled only through generated artifacts: ABI exports from
-`contracts/out/` and per-chain deployed addresses from `broadcast/` run files. There is no
-root workspace tool — the packages are independent (see `AGENTS.md` for the full
-structure).
+两个包仅通过生成产物耦合：`contracts/out/` 导出的 ABI，以及 `broadcast/` 运行文件
+中的各链部署地址。没有根级 workspace 工具——两个包相互独立（完整结构见
+`AGENTS.md`）。
 
-## Prerequisites
+## 环境要求
 
-- **Foundry** (forge, cast, anvil):
+- **Foundry**（forge、cast、anvil）：
   `curl -L https://foundry.paradigm.xyz | bash && foundryup`
-- **Node.js ≥ 20** and a package manager (npm/pnpm/bun)
-- **MetaMask** (or any EIP-1193 wallet) for browser flows
+- **Node.js ≥ 20** 及包管理器（npm/pnpm/bun）
+- **MetaMask**（或任意 EIP-1193 钱包）用于浏览器流程
 
-## Quickstart — Local anvil (primary dev loop)
+## 快速开始 — 本地 anvil（主要开发循环）
 
-The full runnable guide is [specs/001-uniswap-v2-resume/quickstart.md](specs/001-uniswap-v2-resume/quickstart.md);
-the canonical dev loop is:
+完整的可运行指南见 [specs/001-uniswap-v2-resume/quickstart.md](specs/001-uniswap-v2-resume/quickstart.md)；
+标准开发循环如下：
 
 ```bash
-# A.1 — start a local chain (keep this terminal open)
+# A.1 — 启动本地链（保持此终端开启）
 anvil --chain-id 31337 --port 8545
 
-# A.2 — deploy the demo (Factory, Router02, WETH9, 4 tokens, 2 seeded pairs)
+# A.2 — 部署演示环境（Factory、Router02、WETH9、4 个代币、2 个预置交易对）
 cd contracts
-forge install                                   # if contracts/lib is empty
+forge install                                   # 若 contracts/lib 为空
 forge build
 forge script script/DeployDemo.s.sol:DeployDemo \
   --rpc-url http://127.0.0.1:8545 \
@@ -81,21 +79,20 @@ forge script script/DeployDemo.s.sol:DeployDemo \
   --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 \
   -vvv
 
-# A.3 — sync deployed addresses + ABIs into the frontend
+# A.3 — 将部署地址 + ABI 同步到前端
 cd ../frontend
 node scripts/sync-deploy.ts ../contracts/broadcast/31337/run-latest.json 31337
 
-# A.4 — run the frontend
+# A.4 — 启动前端
 npm install
 npm run dev                                     # http://localhost:3000
 
-# A.5 — browser validation (manual, SC-001)
-#   Connect MetaMask to anvil (chainId 31337, RPC http://127.0.0.1:8545),
-#   swap WETH → USDC on /swap, approve + confirm, check the empty
-#   USDC/DAI pool edge case, add liquidity on /liquidity, and verify
-#   positions + fees on /portfolio (SC-004, < 3 s).
+# A.5 — 浏览器验证（手动，SC-001）
+#   将 MetaMask 连接到 anvil（chainId 31337，RPC http://127.0.0.1:8545），
+#   在 /swap 用 WETH 兑换 USDC，approve 并确认；检查 USDC/DAI 空池边界
+#   情况；在 /liquidity 添加流动性；在 /portfolio 验证持仓与手续费（SC-004，< 3 秒）。
 
-# A.6 — automated validation (CI parity)
+# A.6 — 自动化验证（与 CI 一致）
 cd ../contracts
 forge fmt --check
 forge build --sizes
@@ -108,115 +105,93 @@ npm run test
 npm run test:e2e
 ```
 
-### One-command quick start (deploy scripts)
+### 一条命令快速启动（部署脚本）
 
-Instead of the manual steps above, use the deploy script to start a full local
-environment in one command:
+除手动步骤外，也可以直接用部署脚本一条命令启动完整本地环境：
 
 ```bash
-# Start a fresh anvil → deploy the demo → sync addresses → verify swap-ready
-# (leaves anvil running so the frontend can connect)
+# 启动全新 anvil → 部署演示 → 同步地址 → 验证可兑换
+# （保持 anvil 运行，前端才能连接）
 ./scripts/dev-deploy.sh
 
-# Same, plus start the frontend dev server (Ctrl+C stops everything)
+# 同上，另自动启动前端 dev server（Ctrl+C 全部停止）
 ./scripts/dev-deploy.sh --dev
 ```
 
-`dev-deploy.sh` is the quick-deployment script: it restarts a clean anvil (chainId
-31337, port 8545), deploys the demo (Factory, Router02, WETH9, 4 tokens, 2 seeded
-pairs), regenerates the frontend bindings via `sync-deploy.ts`, and verifies the
-deployer can swap. After it finishes, run `cd frontend && npm run dev` (unless you
-used `--dev`) and open http://localhost:3000.
+`dev-deploy.sh` 是快速部署脚本：重启干净的 anvil（chainId 31337，端口 8545）、
+部署演示环境（Factory、Router02、WETH9、4 个代币、2 个预置交易对）、通过
+`sync-deploy.ts` 重新生成前端绑定，并验证部署账户可以完成兑换。结束后运行
+`cd frontend && npm run dev`（除非使用了 `--dev`），打开 http://localhost:3000。
 
-`./scripts/test-e2e.sh --dev` and `./scripts/test-e2e-phase5.sh --dev` are
-alternative quick-start paths with the same anvil + deploy + sync + dev-server
-flow, without running any tests.
+`./scripts/test-e2e.sh --dev` 和 `./scripts/test-e2e-phase5.sh --dev` 是相同的
+anvil + 部署 + 同步 + dev-server 流程的替代快速入口（不跑测试）。
 
-## Deployment targets
+## 部署目标
 
-> **Scenario B removed** — this project is Anvil-only. Local testing and demos run on
-> the anvil chain (chainId 31337); see the Quickstart section above.
+> **场景 B 已移除** — 本项目仅面向 anvil。本地测试与演示运行在 anvil 链上
+> （chainId 31337）；见上方"快速开始"。
 
-## Contract addresses
+## 合约地址
 
-Deployed addresses are generated by `scripts/sync-deploy.ts` into
-`frontend/src/lib/contracts/addresses.ts` as a per-chain `DEPLOYMENTS` record (anvil
-31337), populated from the Foundry `broadcast/` run-latest JSON of the deploy script. Re-run `sync-deploy.ts` after any redeploy — `broadcast/` is gitignored and
-the generated files are tracked.
+部署地址由 `scripts/sync-deploy.ts` 生成到
+`frontend/src/lib/contracts/addresses.ts`，为按链组织的 `DEPLOYMENTS` 记录
+（anvil 31337），数据来自部署脚本的 Foundry `broadcast/` run-latest JSON。任何
+重新部署后请重新运行 `sync-deploy.ts` —— `broadcast/` 已被 gitignore，生成文件
+是纳入版本管理的。
 
-Deploy scripts: `contracts/script/DeployDemo.s.sol` (main demo),
-`contracts/script/core/DeployFactory.s.sol`, `contracts/script/router/DeployRouter.s.sol`.
+部署脚本：`contracts/script/DeployDemo.s.sol`（主演示）、
+`contracts/script/core/DeployFactory.s.sol`、`contracts/script/router/DeployRouter.s.sol`。
 
-## Testing
+## 测试
 
-**Contracts** (from `contracts/`):
+**合约**（在 `contracts/` 下）：
 
 ```bash
-forge fmt --check        # formatting (Constitution IV)
-forge build --sizes      # Router02 must stay under the 24 KB EIP-170 limit
-forge test -vvv          # all tests green
-forge test --coverage    # ≥ 95% line coverage (Constitution III)
-forge snapshot           # gas baseline; CI diffs with --check
+forge fmt --check        # 格式检查（宪法 IV）
+forge build --sizes      # Router02 必须低于 EIP-170 的 24 KB 上限
+forge test -vvv          # 全部测试通过
+forge test --coverage    # ≥ 95% 行覆盖率（宪法 III）
+forge snapshot           # gas 基线；CI 用 --check 对比
 ```
 
-**Frontend** (from `frontend/`):
+**前端**（在 `frontend/` 下）：
 
 ```bash
 npm run lint             # ESLint
-npx tsc --noEmit         # TypeScript strict
-npm run test             # Vitest unit + component
-npm run build            # Next.js production build
-npm run test:e2e         # Playwright against a local anvil chain
+npx tsc --noEmit         # TypeScript 严格模式
+npm run test             # Vitest 单元 + 组件测试
+npm run build            # Next.js 生产构建
+npm run test:e2e         # Playwright 针对本地 anvil 链的端到端测试
 ```
 
-**Root scripts** (canonical dev loop):
+**根级脚本**（标准开发循环）：
 
-| Script | Purpose |
+| 脚本 | 用途 |
 |---|---|
-| `./scripts/test-unit.sh` | forge test + vitest (both packages) |
-| `./scripts/test-e2e.sh` | Fresh anvil → DeployDemo → sync → forge test → vitest → build + Playwright |
-| `./scripts/test-e2e-phase5.sh` | US3 (liquidity-removal) loop with an LP-readiness gate |
-| `./scripts/dev-deploy.sh` | **Quick deploy**: fresh anvil → deploy → sync → verify; leaves anvil running for the frontend (`--dev` also starts `npm run dev`) |
+| `./scripts/test-unit.sh` | forge test + vitest（两个包） |
+| `./scripts/test-e2e.sh` | 全新 anvil → DeployDemo → 同步 → forge test → vitest → 构建 + Playwright |
+| `./scripts/test-e2e-phase5.sh` | US3（移除流动性）循环，带 LP 就绪检查 |
+| `./scripts/dev-deploy.sh` | **快速部署**：全新 anvil → 部署 → 同步 → 验证；保持 anvil 运行供前端使用（`--dev` 另启动 `npm run dev`） |
 
 ## CI
 
-GitHub Actions (`.github/workflows/test.yml`) runs, per push/PR: contracts
-`forge fmt --check` → `forge build --sizes` → `forge test -vvv` (+ coverage and gas
-snapshot when artifacts exist), and frontend `tsc --noEmit` → `npm run lint` →
-`npm run test` → `npm run build`.
+GitHub Actions（`.github/workflows/test.yml`）在每次 push/PR 时运行：合约
+`forge fmt --check` → `forge build --sizes` → `forge test -vvv`（存在产物时另跑
+覆盖率和 gas snapshot），前端 `tsc --noEmit` → `npm run lint` → `npm run test` →
+`npm run build`。
 
-## Repository structure
+## 仓库结构
 
 ```text
-contracts/      Foundry project (core + router + DeployDemo scripts + tests)
-frontend/       Next.js 15 App Router dApp (pages, hooks, generated bindings)
+contracts/      Foundry 项目（core + router + DeployDemo 脚本 + 测试）
+frontend/       Next.js 15 App Router dApp（页面、hooks、生成的绑定）
 scripts/        test-unit.sh · test-e2e.sh · test-e2e-phase5.sh · dev-deploy.sh
-specs/          Authoritative feature docs (spec, plan, tasks, quickstart)
-.github/        CI workflows (test.yml)
+specs/          权威功能文档（spec、plan、tasks、quickstart）
+.github/        CI 工作流（test.yml）
 ```
 
-See `AGENTS.md` for the full structure, conventions, and gotchas.
+完整结构、约定与注意事项见 `AGENTS.md`。
 
-## License
+## 许可证
 
-MIT License
-
-Copyright (c) 2026 <your name>
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+MIT License. Copyright (c) 2026 Ray Tian.
