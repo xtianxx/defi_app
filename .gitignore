@@ -8,6 +8,7 @@ contracts/lib/
 contracts/out/
 contracts/cache/
 contracts/broadcast/*/31337/
+contracts/broadcast/*/11155111/
 contracts/broadcast/**/dry-run/
 contracts/coverage/
 
@@ -24,6 +25,7 @@ Thumbs.db
 
 # log
 .anvil.log
+.sepolia-deploy.log
 
 # CodeGraph (local code-index daemon; symlink to ~/.omo/codegraph/)
 .codegraph

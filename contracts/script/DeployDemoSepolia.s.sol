@@ -82,8 +82,10 @@ contract DeployDemoSepolia is Script {
 
         // 4. Fund deployer (master): wrap ETH + mint tokens. Mint/seed amounts include a
         //    personal testing balance plus the demo-account WETH, faucet reserve and seed
-        //    budgets (see constants above).
-        weth.deposit{value: WETH_USDC_WETH + WETH_DAI_WETH + DEPLOYER_WETH}();
+        //    budgets (see constants above). FAUCET_WETH_RESERVE is wrapped here because
+        //    the faucet is funded by transfer (WETH has no mint — R0.4) and DEPLOYER_WETH
+        //    alone would not cover it at the ÷1000 Sepolia scale.
+        weth.deposit{value: WETH_USDC_WETH + WETH_DAI_WETH + DEPLOYER_WETH + FAUCET_WETH_RESERVE}();
         usdc.mint(deployer, WETH_USDC_USDC + DEPLOYER_USDC);
         dai.mint(deployer, WETH_DAI_DAI + DEPLOYER_DAI);
         // WBTC is deployed for ABI/frontend parity but not seeded into a pair in this demo.

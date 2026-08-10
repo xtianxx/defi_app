@@ -110,6 +110,7 @@ broadcast_deploy() {
     forge script script/DeployDemoSepolia.s.sol:DeployDemoSepolia \
       --rpc-url "${SEPOLIA_RPC_URL}" \
       --broadcast \
+      --private-key "${SEPOLIA_DEPLOYER_KEY}" \
       --verify \
       --etherscan-api-key "${ETHERSCAN_API_KEY}" \
       --slow \
