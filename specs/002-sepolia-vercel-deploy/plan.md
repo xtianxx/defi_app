@@ -76,6 +76,7 @@ Constitution: `.specify/memory/constitution.md` v1.1.0 (amended 2026-07-27).
 | Testnet private keys published in demo guide | Accepted, documented risk | Spec assumption (line: "exposing testnet-only private keys is an accepted, documented risk"). Keys hold Sepolia-only test assets; master funding account key stays out of the guide (held by developer). |
 | `MockERC20.mint` is permissionless | Accepted for testnet demo | `MockERC20` is a project-owned test fixture (001); the faucet exploits its open mint rather than introducing role/permission machinery. On a public testnet this is harmless (no real value); documented in research.md R0.4 alternatives. |
 | New on-chain contract for faucet vs. backend service | Spec-mandated | FR-008 clarification (2026-08-10): pure contract, no backend. Simpler alternative (faucet API server) rejected by spec. |
+| Slither/Mythril on the new faucet contract | Added to T035 quality gates | Constitution (Smart Contract Requirements) requires static analysis with no high/critical findings; run on `DemoFaucet` if tooling is installed, else record the exemption here at implement time (001 shipped no slither CI). |
 
 **Gate Evaluation**: No principle violations. Veto gate (Principle I) PASS. **Proceed to Phase 0.**
 

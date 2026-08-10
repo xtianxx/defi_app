@@ -20,12 +20,12 @@
 
 ### Decision
 
-Fund the **master funding account once with 0.1–0.25 ETH** (covers full deployment ~0.02 ETH at 1 gwei + seeding + hundreds of demo txs; 0.25 ETH survives 10× fee spikes), then replenish demo accounts via `cast send` from master (primary path, FR-005/SC-003).
+Fund the **master funding account once with 0.25–0.5 ETH** (budget: ~0.02–0.03 ETH deployment gas at ~1 gwei + demo-account ETH/WETH funding + the 0.2 ETH initial faucet WETH reserve — T010; reserve grows via `reseed-pools` top-ups), then replenish demo accounts via `cast send` from master (primary path, FR-005/SC-003).
 
 | Path | When | Faucet |
 |---|---|---|
 | **Primary (one-shot)** | Operator holds ≥0.08 ETH on mainnet | **Chainstack** — up to 0.5 ETH/24h, tops to 0.5; single claim completes funding |
-| **Primary (no mainnet ETH)** | Fresh account | **Google Cloud Web3 Faucet** — 0.05 ETH/24h, GitHub auth, no mainnet requirement; claim 2–5 days to reach 0.1–0.25 ETH, supplemented in parallel by **ethfaucet.com** (0.1 ETH/24h, BringID zk identity) and/or **QuickNode** (12h drips, X-post) |
+| **Primary (no mainnet ETH)** | Fresh account | **Google Cloud Web3 Faucet** — 0.05 ETH/24h, GitHub auth, no mainnet requirement; claim 2–5 days to reach 0.25–0.5 ETH, supplemented in parallel by **ethfaucet.com** (0.1 ETH/24h, BringID zk identity) and/or **QuickNode** (12h drips, X-post) |
 | **Replenishment (≤5 min)** | Any time | `cast send` from master — 21k gas ≈ 0.00002 ETH per transfer; 20 replenishments complete in well under a minute |
 | **Emergency fallback** | Master dry mid-interview | **pk910 PoW faucet** (no auth, CPU mining) |
 
@@ -188,5 +188,5 @@ The pattern is the standard faucet state machine (timestamp map + window check) 
 | D3 | Verify via `forge script --verify` in the deploy loop; post-hoc `forge verify-contract --via-ir --optimizer-runs 200 --compiler-version 0.8.19` fallback; standard-JSON last resort | Reproducible, <30 min, avoids constructor-arg mismatches (R0.3) |
 | D4 | Pure on-chain `DemoFaucet`: timestamp map + 24h window, mint USDC/DAI/WBTC + transfer WETH reserve, `nextEligibleTime` view | Spec-mandated, no backend; CEI-safe; no reentrancy surface (R0.4) |
 | D5 | Fresh demo-account keys generated for Sepolia (anvil well-known keys are public knowledge) | Prevent drain by anyone who knows 001's docs (plan D4) |
-| D6 | Master funding account charged once with 0.1–0.25 ETH (Chainstack if ≥0.08 ETH mainnet held, else Google Cloud Web3 faucet + ethfaucet supplement); replenishment via `cast send` from master (seconds), pk910 PoW + faucet checklist as emergency fallback | R0.1: live-verified landscape; ≤5 min target (FR-005/SC-003) trivially satisfied |
+| D6 | Master funding account charged once with 0.25–0.5 ETH (Chainstack tops to 0.5 if ≥0.08 ETH mainnet held, else Google Cloud Web3 faucet + ethfaucet supplement; budget includes the 0.2 ETH faucet WETH reserve — T010); replenishment via `cast send` from master (seconds), pk910 PoW + faucet checklist as emergency fallback | R0.1: live-verified landscape; ≤5 min target (FR-005/SC-003) trivially satisfied |
 | D7 | Multi-chain sync-deploy: `chainIds = [31337, 11155111]`, tracked generated `addresses.ts`/`tokens.ts` committed with Sepolia addresses | Sepolia addresses are testnet-public; broadcast JSON stays gitignored (repo convention) |

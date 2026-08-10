@@ -23,7 +23,7 @@ contract DemoFaucet {
     uint256 public constant WETH_AMOUNT  = 0.1 ether;
     uint256 public constant USDC_AMOUNT  = 200 * 10 ** 6;   // 200 USDC
     uint256 public constant DAI_AMOUNT   = 200 * 10 ** 18;  // 200 DAI
-    uint256 public constant WBTC_AMOUNT  = 10_000 * 10 ** 8; // 0.01 WBTC
+    uint256 public constant WBTC_AMOUNT  = 1_000_000; // 0.01 WBTC (8 decimals)
 
     IERC20 public immutable weth;
     MockERC20 public immutable usdc;
@@ -107,6 +107,6 @@ Returns `lastRequestAt[who] + WINDOW` (0 if never requested). Powers the UI coun
 
 ## 6. Deployment Wiring
 
-- **Sepolia**: deployed in `DeployDemoSepolia.s.sol` (order: tokens → factory → router → pairs → **fund faucet WETH** → deploy faucet) → funded with WETH reserve (`weth.transfer(faucet, X)`); address flows to `sync-deploy.ts` `faucet` field.
+- **Sepolia**: deployed in `DeployDemoSepolia.s.sol` (order: tokens → factory → router → pairs → **fund faucet WETH** → deploy faucet) → funded with WETH reserve (`weth.transfer(faucet, 0.2 ether)` — `FAUCET_WETH_RESERVE`, initial 2 grants; top-up via `reseed-pools`); address flows to `sync-deploy.ts` `faucet` field.
 - **Anvil**: same script reused in the local loop so `/faucet` is testable offline.
 - **ABI**: added to curated `frontend/src/lib/contracts/abis.ts` as `DemoFaucet_ABI` (sync-deploy regenerates `abis.generated.ts` automatically; the curated export is the binding the frontend imports).

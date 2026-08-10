@@ -13,7 +13,7 @@ This is the **runnable validation guide** for the Sepolia/Vercel demo. Implement
 | Explorer | Free Etherscan API key (env: `ETHERSCAN_API_KEY`) — works for Sepolia (R0.3) |
 | Wallet | MetaMask (or EIP-1193) with Sepolia network added |
 | Keys | Master funding account key (dev-held, never documented) + 2 fresh demo account keys |
-| Test ETH | **0.1–0.25 ETH** to master: Chainstack (one-shot, if ≥0.08 ETH mainnet held) else Google Cloud Web3 faucet (0.05 ETH/24h) + ethfaucet supplement — fallback checklist in research.md R0.1 |
+| Test ETH | **0.25–0.5 ETH** to master: Chainstack (one-shot, tops to 0.5, if ≥0.08 ETH mainnet held) else Google Cloud Web3 faucet (0.05 ETH/24h) + ethfaucet supplement over a few days — covers deploy gas + demo-account funding + 0.2 ETH faucet WETH reserve (T010); fallback checklist in research.md R0.1 |
 | Tools | `forge`/`cast` (Foundry), `node` (sync-deploy), GitHub repo (personal, not org — R0.2) |
 
 ## Setup: Full Sepolia Deployment (FR-010, ≤30 min)
@@ -32,7 +32,7 @@ forge script script/DeployDemoSepolia.s.sol --rpc-url "$SEPOLIA_RPC_URL" --broad
 #      funds faucet WETH reserve, funds demo accounts, deploys DemoFaucet
 
 # 4. Regenerate + commit frontend bindings (multi-chain — plan D7)
-node scripts/sync-deploy.ts 11155111   # reads broadcast/DeployDemoSepolia.s.sol/11155111/run-latest.json
+node scripts/sync-deploy.ts            # no args (multi-chain) — reads broadcast/DeployDemoSepolia.s.sol/11155111/run-latest.json
 git add frontend/src/lib/contracts/addresses.ts frontend/src/lib/contracts/tokens.ts && git commit
 
 # 5. Deploy frontend to Vercel (R0.2 — see contracts/frontend-module-api.md §8)

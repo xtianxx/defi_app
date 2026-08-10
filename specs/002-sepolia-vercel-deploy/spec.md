@@ -57,7 +57,7 @@ The interviewer receives a small set of sample accounts (documented credentials)
 
 Visitors (including the interviewer's own wallet) can request project test tokens directly from the app, making the demo self-service and resilient to third-party faucet outages.
 
-**Why this priority**: Clarified in-scope for this feature (2026-08-10): implemented as a pure on-chain faucet contract with time-window rate limiting (e.g., one request per wallet per 24h) — no backend service, no server-held private keys. This is a self-service layer on top of the seeded accounts that survives unexpected balance drains.
+**Why this priority**: Clarified in-scope for this feature (2026-08-10): implemented as a pure on-chain faucet contract with time-window rate limiting (one request per wallet per 24 hours) — no backend service, no server-held private keys. This is a self-service layer on top of the seeded accounts that survives unexpected balance drains.
 
 **Independent Test**: Can be fully tested by connecting any wallet and requesting a token grant from the app; the balance should appear on-chain within one minute. Delivers "any visitor can obtain test tokens without leaving the app".
 
@@ -87,7 +87,7 @@ A concise, non-technical guide (demo script) tells the interviewer what to open,
 
 ### Edge Cases
 
-- What happens when the testnet RPC endpoint is slow or unavailable? The app must keep working with visible loading/error states and a documented fallback endpoint rather than silently failing
+- What happens when the testnet RPC endpoint is slow or unavailable? The app must show visible loading/error states (existing 502/Retry-After path) rather than silently failing, and the quickstart must document fallback guidance: how to check provider status and swap in a second free-tier RPC endpoint
 - What happens when a demo account runs out of test ETH mid-demo? A documented ≤5-minute replenishment path (faucet + documented process) must exist
 - What happens when a visitor connects with a wallet on mainnet or another testnet? The app must show a clear network-mismatch message with switch guidance, never a misleading error
 - What happens when someone drains or removes the seeded liquidity? A documented re-seeding process restores demo state
@@ -106,7 +106,7 @@ A concise, non-technical guide (demo script) tells the interviewer what to open,
 - **FR-005**: A mechanism MUST exist to replenish test ETH and project test tokens for demo accounts, documented and executable within 5 minutes (primary path: transfer from a master funding account charged once via public Sepolia faucets; fallback: public faucets)
 - **FR-006**: Liquidity pools MUST be pre-seeded on Sepolia so the swap, liquidity, and portfolio pages show realistic on-chain data at first load
 - **FR-007**: All deployed contracts MUST be verified on Sepolia Etherscan (free API key), with source code and addresses publicly viewable
-- **FR-008**: The project MUST provide an in-app faucet to grant project test tokens to any connected wallet, implemented as a pure on-chain faucet contract with time-window rate limiting (e.g., one request per wallet per 24h) and no backend service
+- **FR-008**: The project MUST provide an in-app faucet to grant project test tokens to any connected wallet, implemented as a pure on-chain faucet contract with time-window rate limiting (one request per wallet per 24 hours) and no backend service
 - **FR-009**: The existing local development flow (local testnet) MUST keep working unchanged after this feature ships (regression requirement)
 - **FR-010**: A developer MUST be able to reproduce the full deployment (contracts and frontend) from the documentation alone in under 30 minutes
 - **FR-011**: The app MUST present human-readable errors for the common demo failure modes: wrong network, insufficient balance, failed transaction, and missing approval
@@ -119,7 +119,7 @@ A concise, non-technical guide (demo script) tells the interviewer what to open,
 - **Test Token**: A fungible token deployed on Sepolia representing the project's standard set (WETH, USDC, DAI, WBTC equivalents), used by the swap and liquidity flows
 - **Liquidity Pool**: A pair contract on Sepolia holding seeded reserves of two tokens; backs the swap, liquidity, and portfolio pages
 - **Contract Deployment**: The set of on-chain addresses (factory, router, tokens, pairs) with verified source code on the public explorer
-- **Faucet Grant**: A record of token disbursement to a wallet, enforced on-chain via a time-window rate limit (e.g., one request per wallet per 24h), ensuring fair and repeatable demo use
+- **Faucet Grant**: A record of token disbursement to a wallet, enforced on-chain via a time-window rate limit (one request per wallet per 24 hours), ensuring fair and repeatable demo use
 
 ## Success Criteria *(mandatory)*
 
