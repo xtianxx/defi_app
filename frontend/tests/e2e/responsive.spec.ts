@@ -227,6 +227,15 @@ test.describe("Responsive viewports — FR-010 / SC-008 (T072b)", () => {
           page.getByRole("heading", { name: "Portfolio" }),
         ).toBeVisible({ timeout: 30_000 });
 
+        // Wallet connect is async (silentReconnect fires after hydration) and
+        // the portfolio data path is ~40+ eth_call round-trips via the wallet
+        // provider (usePortfolio), so cards land hundreds of ms after the
+        // address chip in suite context. Wait for a seeded card heading before
+        // counting (mirrors portfolio.spec.ts's card wait).
+        await expect(
+          page.getByRole("heading", { name: /WETH \/ (USDC|DAI)/ }).first(),
+        ).toBeVisible({ timeout: 15_000 });
+
         // DeployDemo seeds WETH/USDC + WETH/DAI LP to the deployer. The
         // remove-liquidity suite that sorts before this file closes WETH/USDC
         // (E2E-US3-C-04) and only partially burns WETH/DAI — accept either.
@@ -255,6 +264,12 @@ test.describe("Responsive viewports — FR-010 / SC-008 (T072b)", () => {
         await expect(
           page.getByRole("heading", { name: "Portfolio" }),
         ).toBeVisible({ timeout: 30_000 });
+
+        // Same data race as the position-cards test — wait for a seeded card
+        // heading so the card count below is meaningful (not 0 pre-data).
+        await expect(
+          page.getByRole("heading", { name: /WETH \/ (USDC|DAI)/ }).first(),
+        ).toBeVisible({ timeout: 15_000 });
 
         // useTwapPrice needs two samples >= 60s apart to report TWAP; a fresh
         // browser context always starts in spot-fallback, so accept either
