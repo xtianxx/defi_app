@@ -32,3 +32,5 @@ Thumbs.db
 
 # CodeGraph (local code-index daemon; symlink to ~/.omo/codegraph/)
 .codegraph
+.vercel
+.env*

@@ -46,3 +46,4 @@ src/lib/contracts/abis.generated.ts
 
 # TypeScript
 *.tsbuildinfo
+.env*
