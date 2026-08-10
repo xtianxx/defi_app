@@ -17,8 +17,9 @@ The repository is a two-package monorepo:
   portfolio view backed by on-chain TWAP-only prices. ethers v6, React 19, Tailwind +
   shadcn/ui, Vitest + Playwright.
 
-The deploy target is local `anvil` (chainId 31337, deterministic dev loop). No real
-value is ever at risk.
+The dev loop deploys to local `anvil` (chainId 31337, deterministic). No real
+value is ever at risk; the public demo runs on the Sepolia testnet and is hosted
+on Vercel (see "Sepolia Testnet / Vercel Deployment" below).
 
 ## Architecture
 
@@ -134,14 +135,84 @@ flow, without running any tests.
 
 ## Deployment targets
 
-> **Scenario B removed** — this project is Anvil-only. Local testing and demos run on
-> the anvil chain (chainId 31337); see the Quickstart section above.
+- **Local dev/testing** — anvil (chainId 31337, deterministic dev loop); see the
+  Quickstart section above.
+- **Public demo** — Sepolia testnet (chainId 11155111) + Vercel hosting; see below.
+
+## Sepolia Testnet / Vercel Deployment (public demo)
+
+The public demo environment (feature 002): contracts deployed on the **Sepolia
+testnet** (chainId 11155111) and verified on Etherscan, frontend publicly hosted
+on **Vercel** (FR-010/FR-013). The interview demo script, demo accounts and
+deployed addresses live in
+[specs/002-sepolia-vercel-deploy/demo-guide.md](specs/002-sepolia-vercel-deploy/demo-guide.md);
+the full validation scenarios (VS-1..VS-5: public access, demo accounts, in-app
+faucet, local regression, reproducibility) are in
+[specs/002-sepolia-vercel-deploy/quickstart.md](specs/002-sepolia-vercel-deploy/quickstart.md).
+
+The whole deployment can be reproduced in **≤ 30 minutes** with the 6 steps below
+(FR-010/SC-005):
+
+| # | Step | Time budget |
+|---|---|---|
+| 1 | Generate 3 fresh demo-account keys (master / LP provider / swapper): `cast wallet new`, record the addresses (never reuse anvil's well-known keys — plan D5) | ~3 min |
+| 2 | Fund the master via public Sepolia faucets (0.25–0.5 ETH; faucet ladder in research.md R0.1) | ~5 min |
+| 3 | One-shot deploy + seed + verify: `forge script script/DeployDemoSepolia.s.sol --broadcast --verify --slow` (with `SEPOLIA_RPC_URL` / `ETHERSCAN_API_KEY` exported) | ~10 min |
+| 4 | Regenerate and commit frontend bindings: `node frontend/scripts/sync-deploy.ts` (argless, multi-chain) → `git add` + commit | ~2 min |
+| 5 | Import the repo on Vercel: Root Directory = `frontend/`, env var `SEPOLIA_RPC_URL` (Production + Preview) | ~5 min |
+| 6 | Replenish demo accounts (FR-005 primary path): `./scripts/sepolia-deploy.sh fund-demo-accounts` | ~5 min |
+
+Total: ~30 minutes.
+
+```bash
+# 1. Generate demo-account keys (× 3)
+cast wallet new
+
+# 2. Fund master via public Sepolia faucets (ladder in research.md R0.1)
+
+# 3. One-shot deploy + seed + Etherscan verification (from contracts/; --verify auto-decodes constructor args — R0.3)
+export SEPOLIA_RPC_URL=... ETHERSCAN_API_KEY=...
+forge script script/DeployDemoSepolia.s.sol --rpc-url "$SEPOLIA_RPC_URL" --broadcast \
+  --verify --etherscan-api-key "$ETHERSCAN_API_KEY" --slow -vvv
+
+# 4. Regenerate frontend bindings (argless, multi-chain) and commit
+node frontend/scripts/sync-deploy.ts
+git add frontend/src/lib/contracts/addresses.ts frontend/src/lib/contracts/tokens.ts && git commit
+
+# 5. Vercel: import repo → Root Directory: frontend/ → env SEPOLIA_RPC_URL (Production + Preview) → Deploy
+
+# 6. Replenish demo accounts (primary path, FR-005)
+./scripts/sepolia-deploy.sh fund-demo-accounts
+```
+
+After deployment: every contract address from step 3 shows verified source code on
+`sepolia.etherscan.io` (SC-002); a fresh browser at the Vercel URL connects via
+MetaMask (Sepolia network added) and loads live on-chain balances and prices.
+
+`./scripts/sepolia-deploy.sh` (no subcommand) runs the whole deployment in one
+shot: preflight (`contracts/.env`, toolchain, master balance) → `forge build` →
+dry-run simulation against live Sepolia (nothing broadcast) → `--broadcast
+--verify --slow` → `sync-deploy.ts` → summary table of deployed addresses and
+verification status.
+
+### Environment variables (server-only, never `NEXT_PUBLIC_`)
+
+| Variable | Purpose | Notes |
+|---|---|---|
+| `SEPOLIA_RPC_URL` | Sepolia RPC endpoint (Alchemy/Infura free tier) | Used by forge for deploys; read server-side by the frontend `/api/reserves` route (`createServerProvider()`) — **server-only, never prefix with `NEXT_PUBLIC_`**; configure on Vercel for Production + Preview |
+| `ETHERSCAN_API_KEY` | Free Etherscan API key | Used by `--verify` for contract verification (R0.3) |
+| `SEPOLIA_DEPLOYER_KEY` | Master deployer private key | Deployer + funding source; **never documented anywhere** (demo-guide.md only records demo-account addresses) |
+
+All live in the **gitignored** `contracts/.env` (template: `contracts/.env.example`),
+read by `sepolia-deploy.sh` and referenced only via variables — never inlined into
+commands or commits. Same rule on the frontend: environment variables are read by
+server-side route handlers only; the client never depends on any env var.
 
 ## Contract addresses
 
 Deployed addresses are generated by `scripts/sync-deploy.ts` into
 `frontend/src/lib/contracts/addresses.ts` as a per-chain `DEPLOYMENTS` record (anvil
-31337), populated from the Foundry `broadcast/` run-latest JSON of the deploy script. Re-run `sync-deploy.ts` after any redeploy — `broadcast/` is gitignored and
+31337 + Sepolia 11155111), populated from the Foundry `broadcast/` run-latest JSON of the deploy script. Re-run `sync-deploy.ts` after any redeploy — `broadcast/` is gitignored and
 the generated files are tracked.
 
 Deploy scripts: `contracts/script/DeployDemo.s.sol` (main demo),
@@ -190,7 +261,7 @@ snapshot when artifacts exist), and frontend `tsc --noEmit` → `npm run lint` �
 ```text
 contracts/      Foundry project (core + router + DeployDemo scripts + tests)
 frontend/       Next.js 15 App Router dApp (pages, hooks, generated bindings)
-scripts/        test-unit.sh · test-e2e.sh · test-e2e-phase5.sh · dev-deploy.sh
+scripts/        test-unit.sh · test-e2e.sh · test-e2e-phase5.sh · dev-deploy.sh · sepolia-deploy.sh
 specs/          Authoritative feature docs (spec, plan, tasks, quickstart)
 .github/        CI workflows (test.yml)
 ```

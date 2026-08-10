@@ -33,3 +33,18 @@ npm run test:e2e     # Playwright e2e (auto-starts dev server)
 
 Connect MetaMask to chainId 31337 (RPC `http://127.0.0.1:8545`) and import the anvil
 deployer key `0xac0974…ff80` (see `../scripts/dev-deploy.sh`).
+
+## Sepolia / Vercel deployment
+
+The public demo deploys the contracts on Sepolia (chainId 11155111) and hosts this
+frontend on Vercel:
+
+- **Vercel Root Directory: `frontend/`** — import the repo, set the env var
+  `SEPOLIA_RPC_URL` for Production + Preview (framework auto-detected: Next.js).
+- **Env vars are server-only** — `SEPOLIA_RPC_URL` is read by the
+  `api/reserves/route.ts` handler (via `createServerProvider()`); never prefix it
+  with `NEXT_PUBLIC_`, the client never depends on any env var.
+
+Full step-by-step guide (6 steps, ≤ 30 min, with time budgets) and the env var
+table: see the "Sepolia Testnet / Vercel Deployment" section in
+[../README.md](../README.md) (English mirror: [../README.en.md](../README.en.md)).
