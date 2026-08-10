@@ -69,3 +69,17 @@ export const IUniswapV2Router02_ABI = [
   "function removeLiquidityWithPermit(address tokenA, address tokenB, uint256 liquidity, uint256 amountAMin, uint256 amountBMin, address to, uint256 deadline, bool approveMax, uint8 v, bytes32 r, bytes32 s) returns (uint256 amountA, uint256 amountB)",
   "function removeLiquidityETHWithPermit(address token, uint256 liquidity, uint256 amountTokenMin, uint256 amountETHMin, address to, uint256 deadline, bool approveMax, uint8 v, bytes32 r, bytes32 s) returns (uint256 amountToken, uint256 amountETH)",
 ] as const;
+
+// DemoFaucet — 24h rate-limited test-token faucet (002-sepolia-vercel-deploy).
+// Curated fragments for the /faucet page: grant-table constants, claim, eligibility views.
+export const DemoFaucet_ABI = [
+  "function WINDOW() view returns (uint256)",
+  "function WETH_AMOUNT() view returns (uint256)",
+  "function USDC_AMOUNT() view returns (uint256)",
+  "function DAI_AMOUNT() view returns (uint256)",
+  "function WBTC_AMOUNT() view returns (uint256)",
+  "function lastRequestAt(address) view returns (uint256)",
+  "function nextEligibleTime(address who) view returns (uint256)",
+  "function request()",
+  "event Requested(address indexed wallet, uint256 timestamp)",
+] as const;

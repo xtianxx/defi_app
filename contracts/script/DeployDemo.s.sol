@@ -4,7 +4,9 @@ pragma solidity ^0.8.19;
 import {Script, console} from "forge-std/Script.sol";
 import {UniswapV2Factory} from "../src/core/UniswapV2Factory.sol";
 import {UniswapV2Pair} from "../src/core/UniswapV2Pair.sol";
+import {DemoFaucet} from "../src/faucet/DemoFaucet.sol";
 import {UniswapV2Router02} from "../src/router/UniswapV2Router02.sol";
+import {IERC20} from "../src/router/interfaces/IERC20.sol";
 import {WETH9} from "../src/router/WETH9.sol";
 import {MockERC20} from "../test/mocks/MockERC20.sol";
 
@@ -39,6 +41,9 @@ contract DeployDemo is Script {
     uint256 constant TESTER_WETH = 20 ether;
     uint256 constant TESTER_TOKEN = 20_000 * 10 ** 18;
     uint256 constant TESTER_USDC = 20_000 * 10 ** 6;
+
+    // DemoFaucet initial WETH reserve (0.2 WETH = 2 grants; same as the Sepolia plan, T010).
+    uint256 internal constant FAUCET_WETH_RESERVE = 0.2 ether;
 
     function run() external {
         address deployer = msg.sender;
@@ -87,6 +92,13 @@ contract DeployDemo is Script {
         require(weth.transfer(pairWethDai, WETH_DAI_WETH), "DeployDemo: weth->pairWethDai failed");
         require(dai.transfer(pairWethDai, WETH_DAI_DAI), "DeployDemo: dai->pairWethDai failed");
         UniswapV2Pair(pairWethDai).mint(deployer);
+
+        // 5b. DemoFaucet — 24h rate-limited test-token faucet (002-sepolia-vercel-deploy).
+        //     WETH is the only reserve-backed leg: funded from the deployer's WETH balance
+        //     wrapped in step 4 (seeding consumed 200 of 300, leaving ample headroom);
+        //     USDC/DAI/WBTC are minted by the faucet on request.
+        DemoFaucet faucet = new DemoFaucet(IERC20(address(weth)), usdc, dai, wbtc);
+        require(weth.transfer(address(faucet), FAUCET_WETH_RESERVE), "DeployDemo: weth->faucet failed");
 
         vm.stopBroadcast();
 
