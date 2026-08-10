@@ -1,11 +1,13 @@
 # PROJECT KNOWLEDGE BASE
 
-**Generated:** 2026-08-04
-**Commit:** 716e488
-**Branch:** 001-uniswap-v2-resume
+**Generated:** 2026-08-10
+**Commit:** f8d28b3
+**Branch:** 002-sepolia-vercel-deploy
 
 ## OVERVIEW
 Monorepo for a Uniswap V2–style DEX resume project. Two independent packages — `contracts/` (Foundry; core + router implemented) and `frontend/` (Next.js 15 App Router dApp) — plus `specs/` (authoritative feature docs). The old Vite/`Counter.sol` scaffold is gone; the dev loop lives in root `scripts/`.
+
+Two feature specs exist: `001-uniswap-v2-resume` (the DEX itself, fully implemented) and `002-sepolia-vercel-deploy` (Sepolia testnet + Vercel hosting + demo accounts/faucet for interviewers — **spec-phase only, no code changes yet**; contracts/frontend remain anvil-only until implemented).
 
 ## DEV WORKFLOW (use these first)
 | Command | Purpose |
@@ -32,6 +34,7 @@ frontend/       Next.js 15 App Router · React 19 · TS 6 strict · ethers v6 ·
   tests/          unit/ (vitest + testing-library, jsdom); e2e/ and load/ are EMPTY
 scripts/        dev-deploy.sh, test-unit.sh, test-e2e.sh, test-e2e-phase5.sh — the canonical dev loop
 specs/001-uniswap-v2-resume/   spec.md · plan.md · tasks.md · quickstart.md (runnable guide)
+specs/002-sepolia-vercel-deploy/  spec.md · checklists/requirements.md (Draft; no plan/tasks yet)
 .github/workflows/test.yml     CI: contracts fmt→build(--sizes)→test; frontend tsc→lint→vitest→build
 .specify/       Speckit planning framework + constitution.md (5 principles; CI gates cite them)
 ```
@@ -39,7 +42,7 @@ specs/001-uniswap-v2-resume/   spec.md · plan.md · tasks.md · quickstart.md (
 ## WHERE TO LOOK
 | Task | Location |
 |---|---|
-| Spec / plan / task breakdown | specs/001-uniswap-v2-resume/{spec,plan,tasks}.md |
+| Spec / plan / task breakdown | specs/001-uniswap-v2-resume/{spec,plan,tasks}.md (implemented) · specs/002-sepolia-vercel-deploy/spec.md (Draft — Sepolia/Vercel demo) |
 | Runnable validation guide | specs/001-uniswap-v2-resume/quickstart.md |
 | Research / data model / phase checklists | specs/001-uniswap-v2-resume/{research,data-model}.md · specs/001-uniswap-v2-resume/checklists/ |
 | Governing rules (v1.1.0) | .specify/memory/constitution.md |
@@ -60,3 +63,5 @@ specs/001-uniswap-v2-resume/   spec.md · plan.md · tasks.md · quickstart.md (
 - **Deployer key** = anvil account 0, hardcoded in scripts: `0xac0974…ff80` (WETH+USDC+DAI+LP); accounts #1 (LP B: USDC+DAI+WBTC) / #2 (swapper: WETH+USDC+DAI) available for multi-user testing
 - **Coverage/gas CI gates are conditional**: coverage runs only if `contracts/src/**/*.sol` exists; gas snapshot only with a committed `contracts/.gas-snapshot`
 - **`contracts/broadcast/31337/` is gitignored** — re-run DeployDemo to refresh frontend bindings
+- **CI push trigger is `main` + `001-**` only** — pushing feature branches like `002-*` runs no CI until a PR is opened (pull_request triggers on all branches)
+- **Docs are bilingual, Chinese-primary**: `README.md` is the Chinese root doc; English lives in `README.en.md` (contracts/ and frontend/ READMEs follow the same pattern)
