@@ -1,13 +1,13 @@
 # PROJECT KNOWLEDGE BASE
 
 **Generated:** 2026-08-10
-**Commit:** 7320630
+**Commit:** f6bd597
 **Branch:** 002-sepolia-vercel-deploy
 
 ## OVERVIEW
 Monorepo for a Uniswap V2–style DEX resume project. Two independent packages — `contracts/` (Foundry; core + router implemented) and `frontend/` (Next.js 15 App Router dApp) — plus `specs/` (authoritative feature docs). The old Vite/`Counter.sol` scaffold is gone; the dev loop lives in root `scripts/`.
 
-Two feature specs exist: `001-uniswap-v2-resume` (the DEX itself, fully implemented) and `002-sepolia-vercel-deploy` (Sepolia testnet + Vercel hosting + demo accounts/faucet for interviewers — **plan + tasks complete, no code changes yet**; contracts/frontend remain anvil-only until implemented). 002's design artifacts (spec/plan/tasks/research/data-model/quickstart/contract interfaces) live in `specs/002-sepolia-vercel-deploy/`; **`tasks.md` was generated 2026-08-10 and is currently UNTRACKED (`??`) — commit it along with the pending spec-doc fixes**. 002 implementation will add a `DemoFaucet` contract, multi-chain frontend wiring (Sepolia chainId 11155111), and a `/faucet` page.
+Two feature specs exist: `001-uniswap-v2-resume` (the DEX itself, fully implemented) and `002-sepolia-vercel-deploy` (Sepolia testnet + Vercel hosting + demo accounts/faucet for interviewers — **plan + tasks complete, no code changes yet**; contracts/frontend remain anvil-only until implemented). 002's design artifacts (spec/plan/tasks/research/data-model/quickstart/contract interfaces) live in `specs/002-sepolia-vercel-deploy/` — all tracked, including `tasks.md`. **002 tasks T001–T036 are mirrored as GitHub issues** (`xtianxx/defi_app` #8–#43): use the task ID (`T0XX`) as the canonical link, and never re-create issues for a task that already has one. 002 implementation will add a `DemoFaucet` contract, multi-chain frontend wiring (Sepolia chainId 11155111), and a `/faucet` page.
 
 ## DEV WORKFLOW (use these first)
 | Command | Purpose |
@@ -31,7 +31,7 @@ frontend/       Next.js 15 App Router · React 19 · TS 6 strict · ethers v6 ·
   src/app/        /swap /liquidity /portfolio /debug pages + api/reserves/route.ts (server-side RPC reads)
   src/hooks/      useWeb3, useToken, usePair, useSwap, useLiquidity, useTwapPrice, usePortfolio, useEarnedFees
   src/lib/        chains.ts (anvil 31337), rpc.ts, tx.ts, contracts/ (generated bindings)
-  tests/          unit/ (vitest + testing-library, jsdom); e2e/ and load/ are EMPTY
+  tests/          unit/ (vitest + testing-library, jsdom) · e2e/ (Playwright: portfolio, remove-liquidity, responsive + fixtures/wallet.ts) · load/ (swap-readonly.js + RESULTS.md)
 scripts/        dev-deploy.sh, test-unit.sh, test-e2e.sh, test-e2e-phase5.sh — the canonical dev loop
 specs/001-uniswap-v2-resume/   spec.md · plan.md · tasks.md · quickstart.md (runnable guide)
 specs/002-sepolia-vercel-deploy/  spec.md · plan.md · tasks.md · research.md · data-model.md · quickstart.md · contracts/ (faucet + frontend API contracts) — plan + tasks complete, no code yet
@@ -42,7 +42,7 @@ specs/002-sepolia-vercel-deploy/  spec.md · plan.md · tasks.md · research.md 
 ## WHERE TO LOOK
 | Task | Location |
 |---|---|
-| Spec / plan / task breakdown | specs/001-uniswap-v2-resume/{spec,plan,tasks}.md (implemented) · specs/002-sepolia-vercel-deploy/{spec,plan,tasks,research,data-model,quickstart}.md + contracts/ (Sepolia/Vercel demo — plan + tasks complete, no code yet) |
+| Spec / plan / task breakdown | specs/001-uniswap-v2-resume/{spec,plan,tasks}.md (implemented) · specs/002-sepolia-vercel-deploy/{spec,plan,tasks,research,data-model,quickstart}.md + checklists/ + contracts/ (Sepolia/Vercel demo — plan + tasks complete, no code yet) |
 | Runnable validation guide | specs/001-uniswap-v2-resume/quickstart.md |
 | Research / data model / phase checklists | specs/001-uniswap-v2-resume/{research,data-model}.md · specs/001-uniswap-v2-resume/checklists/ |
 | Governing rules (v1.1.0) | .specify/memory/constitution.md |
@@ -53,7 +53,7 @@ specs/002-sepolia-vercel-deploy/  spec.md · plan.md · tasks.md · research.md 
 - **Packages independent** — no root workspace, no cross-package imports
 - **Tests**: contracts `test/*.t.sol` (`test_*()` / `testFuzz_*()`); frontend `tests/unit/*.test.{ts,tsx}`; `@/` alias → `src/` (tsconfig + vitest)
 - **ethers v6 split**: server reads = JsonRpcProvider in route handlers; client writes = BrowserProvider via Web3Provider context
-- **Generated bindings**: `sync-deploy.ts` overwrites **tracked** `addresses.ts` + `tokens.ts` + `abis.ts`; `abis.generated.ts` is **gitignored** (legacy, not regenerated). Run via `npm run sync-deploy` in frontend/ — **no CLI args**; chainIds are **hardcoded `[31337]`** in the script (002 implementation will extend to `[11155111]`); auto-finds `broadcast/DeployDemo.s.sol/<chainId>/run-latest.json` — `forge build` + deploy first
+- **Generated bindings**: `sync-deploy.ts` writes **tracked** `addresses.ts` + `tokens.ts` and regenerates **gitignored** `abis.generated.ts` (from `contracts/out/` artifacts); `abis.ts` is a **curated tracked** file NOT touched by sync-deploy — add new ABI exports there by hand. Run via `npm run sync-deploy` in frontend/ — **no CLI args**; chainIds are **hardcoded `[31337]`** in the script (002 T008 extends to `[11155111]`); auto-finds `broadcast/DeployDemo.s.sol/<chainId>/run-latest.json` — `forge build` + deploy first
 - **No .env needed** — chains/RPC hardcoded in `lib/chains.ts` for the anvil chain (chainId 31337); `.env` is already gitignored (002 T001 will add `.env.example` for SEPOLIA_RPC_URL at implementation time)
 
 ## GOTCHAS
@@ -64,4 +64,4 @@ specs/002-sepolia-vercel-deploy/  spec.md · plan.md · tasks.md · research.md 
 - **Coverage/gas CI gates are conditional**: coverage runs only if `contracts/src/**/*.sol` exists; gas snapshot only with a committed `contracts/.gas-snapshot`
 - **`contracts/broadcast/31337/` is gitignored** — re-run DeployDemo to refresh frontend bindings
 - **CI push trigger is `main` + `001-**` only** — pushing feature branches like `002-*` runs no CI until a PR is opened (pull_request triggers on all branches)
-- **Docs are bilingual, Chinese-primary**: `README.md` is the Chinese root doc; English lives in `README.en.md` (contracts/ and frontend/ READMEs follow the same pattern)
+- **Docs are bilingual, Chinese-primary**: root `README.md` (Chinese) + `README.en.md` (English); `contracts/README.md` and `frontend/README.md` are single English files — no `.en.md` sibling in subpackages
