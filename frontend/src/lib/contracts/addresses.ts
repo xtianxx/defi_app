@@ -7,6 +7,7 @@ export interface Deployment {
   factory: `0x${string}`;
   router: `0x${string}`;
   weth: `0x${string}`;
+  faucet: `0x${string}`;
   tokens: {
     WETH: `0x${string}`;
     USDC: `0x${string}`;
@@ -16,7 +17,9 @@ export interface Deployment {
 }
 
 export const DEPLOYMENTS: Record<number, Deployment> = {
-  [ANVIL_CHAIN_ID]: {"factory":"0xdc64a140aa3e981100a9beca4e685f962f0cf6c9","router":"0x5fc8d32690cc91d4c39d9d3abcbd16989f875707","weth":"0xcf7ed3acca5a467e9e704c703e8d87f634fb0fc9","tokens":{"WETH":"0xcf7ed3acca5a467e9e704c703e8d87f634fb0fc9","USDC":"0x5fbdb2315678afecb367f032d93f642f64180aa3","DAI":"0xe7f1725e7734ce288f8367e1bb143e90bb3f0512","WBTC":"0x9fe46736679d2d9a65f0992f2272de9f3c7fa6e0"}},
+  [ANVIL_CHAIN_ID]: {"factory":"0xdc64a140aa3e981100a9beca4e685f962f0cf6c9","router":"0x5fc8d32690cc91d4c39d9d3abcbd16989f875707","weth":"0xcf7ed3acca5a467e9e704c703e8d87f634fb0fc9","faucet":"0x0000000000000000000000000000000000000000","tokens":{"WETH":"0xcf7ed3acca5a467e9e704c703e8d87f634fb0fc9","USDC":"0x5fbdb2315678afecb367f032d93f642f64180aa3","DAI":"0xe7f1725e7734ce288f8367e1bb143e90bb3f0512","WBTC":"0x9fe46736679d2d9a65f0992f2272de9f3c7fa6e0"}},
+  // Sepolia (chainId 11155111)
+  11155111: {"factory":"0x0000000000000000000000000000000000000000","router":"0x0000000000000000000000000000000000000000","weth":"0x0000000000000000000000000000000000000000","faucet":"0x0000000000000000000000000000000000000000","tokens":{"WETH":"0x0000000000000000000000000000000000000000","USDC":"0x0000000000000000000000000000000000000000","DAI":"0x0000000000000000000000000000000000000000","WBTC":"0x0000000000000000000000000000000000000000"}},
 };
 
 export function getDeployment(chainId: number | null): Deployment | null {

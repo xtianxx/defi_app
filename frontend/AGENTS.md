@@ -25,7 +25,7 @@ scripts/            sync-deploy.ts (regenerates contract bindings from forge bro
 ## CONVENTIONS
 - **TS6 strict**: noUnusedLocals, noUnusedParameters, erasableSyntaxOnly, verbatimModuleSyntax; `@/*` → `./src/*` in tsconfig + vitest
 - **ethers v6 split**: server reads via JsonRpcProvider in route handlers; client writes via BrowserProvider from Web3Provider context (not wagmi/viem)
-- **Generated bindings — never hand-edit**: `src/lib/contracts/addresses.ts`, `tokens.ts`, `abis.ts` are **tracked** and rewritten by `node scripts/sync-deploy.ts <chainId>` (auto-finds `../contracts/broadcast/DeployDemo.s.sol/<chainId>/run-latest.json`; run `forge build` first). `abis.generated.ts` is **gitignored** legacy — not regenerated
+- **Generated bindings — never hand-edit**: `src/lib/contracts/addresses.ts`, `tokens.ts`, `abis.ts` are **tracked** and rewritten by `node scripts/sync-deploy.ts` (**no CLI args** — chainIds `[31337, 11155111]` are hardcoded in the script; run `forge build` + DeployDemo first, missing chains keep their committed/ZERO addresses). `abis.generated.ts` is **gitignored** legacy — not regenerated
 - **No .env for local flow** — chains + RPC hardcoded in `lib/chains.ts` (anvil 31337)
 - **route.ts handlers excluded from unit coverage** — intended for Playwright e2e (tests/e2e currently empty)
 
