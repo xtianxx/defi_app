@@ -14,8 +14,9 @@ import {
   parseTokenAmount,
   formatBasisPoints,
 } from "@/lib/format";
-import { getBlockExplorerTxUrl } from "@/lib/chains";
+import { getBlockExplorerTxUrl, isSupportedChain } from "@/lib/chains";
 import { useWeb3Context } from "@/providers/Web3Context";
+import { WrongNetworkBanner } from "@/components/wallet/WrongNetworkBanner";
 import { cn } from "@/lib/utils";
 
 type TokenSymbol = (typeof TOKEN_LIST)[number]["symbol"];
@@ -86,6 +87,7 @@ export function SwapWidget() {
       isDeploymentConfigured(deployment),
     [status, account, chainId, chain, deployment],
   );
+  const supported = isSupportedChain(chainId);
   const routerAddr = deployment?.router ?? null;
 
   const tokenInAddr = useMemo(
@@ -393,6 +395,8 @@ export function SwapWidget() {
         </div>
       </div>
 
+      <WrongNetworkBanner />
+
       <div className="space-y-1 rounded-xl border border-border bg-secondary/50 p-3">
         <div className="flex items-center justify-between text-xs text-muted-foreground">
           <span>You pay</span>
@@ -512,7 +516,7 @@ export function SwapWidget() {
           <p className="font-medium">Approve failed: {approveError}</p>
         </div>
       )}
-      {swap.error && swap.phase !== "rejected" && (
+      {supported && swap.error && swap.phase !== "rejected" && (
         <div className="mt-3 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
           <p className="font-medium">{swap.error.message}</p>
           {(swap.error as { hint?: string } | null)?.hint && (

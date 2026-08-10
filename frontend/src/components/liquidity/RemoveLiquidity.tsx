@@ -7,8 +7,9 @@ import { usePair } from "@/hooks/usePair";
 import { KNOWN_PAIRS, getToken, getTokenAddress } from "@/lib/contracts/tokens";
 import { getDeployment, isDeploymentConfigured } from "@/lib/contracts/addresses";
 import { formatTokenAmount, formatTokenAmountFixed } from "@/lib/format";
-import { getBlockExplorerTxUrl } from "@/lib/chains";
+import { getBlockExplorerTxUrl, isSupportedChain } from "@/lib/chains";
 import { useWeb3Context } from "@/providers/Web3Context";
+import { WrongNetworkBanner } from "@/components/wallet/WrongNetworkBanner";
 import { cn } from "@/lib/utils";
 
 type SymbolPair = readonly [TokenSymbol, TokenSymbol];
@@ -143,6 +144,7 @@ export function RemoveLiquidity() {
     if (status !== "ready" || chainId === null) return false;
     return isDeploymentConfigured(deployment);
   }, [status, chainId, deployment]);
+  const supported = isSupportedChain(chainId);
 
   const selectedPair = useMemo<SymbolPair | null>(() => {
     if (!selectedKey) return null;
@@ -363,6 +365,17 @@ export function RemoveLiquidity() {
     if (percent === 100 && !confirmClose) return true;
     return false;
   }, [liq.phase, networkReady, selectedPair, lpToBurn, percent, confirmClose]);
+
+  if (account && !supported) {
+    return (
+      <div className="w-full max-w-md rounded-lg border border-border bg-card p-4 shadow-sm sm:p-5">
+        <h2 className="text-lg font-semibold tracking-tight">Remove Liquidity</h2>
+        <div className="mt-4">
+          <WrongNetworkBanner />
+        </div>
+      </div>
+    );
+  }
 
   if (!isVisible) return null;
 

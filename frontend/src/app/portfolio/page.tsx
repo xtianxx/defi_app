@@ -9,7 +9,8 @@ import { useEarnedFees } from "@/hooks/useEarnedFees";
 import type { HistoryEntry } from "@/hooks/usePortfolio";
 import { useTwapPrice } from "@/hooks/useTwapPrice";
 import { useWeb3Context } from "@/providers/Web3Context";
-import { getBlockExplorerTxUrl } from "@/lib/chains";
+import { getBlockExplorerTxUrl, isSupportedChain } from "@/lib/chains";
+import { WrongNetworkBanner } from "@/components/wallet/WrongNetworkBanner";
 import { getDeployment, isDeploymentConfigured } from "@/lib/contracts/addresses";
 import { getToken, getTokenAddress, KNOWN_PAIRS } from "@/lib/contracts/tokens";
 import { formatTokenAmountFixed, truncateAddress } from "@/lib/format";
@@ -271,13 +272,23 @@ export default function PortfolioPage() {
     );
   }
 
-  if (chainId === null || !isDeploymentConfigured(deployment)) {
+  if (
+    chainId === null ||
+    !isSupportedChain(chainId) ||
+    !isDeploymentConfigured(deployment)
+  ) {
     return (
       <div className="container mx-auto px-4 py-10">
         <h1 className="text-3xl font-bold tracking-tight">Portfolio</h1>
-        <p className="mt-4 text-muted-foreground">
-          No contract deployment configured for this network.
-        </p>
+        {chainId !== null && !isSupportedChain(chainId) ? (
+          <div className="mt-4 max-w-md">
+            <WrongNetworkBanner />
+          </div>
+        ) : (
+          <p className="mt-4 text-muted-foreground">
+            No contract deployment configured for this network.
+          </p>
+        )}
       </div>
     );
   }

@@ -13,8 +13,9 @@ import {
   formatTokenAmountFixed,
   parseTokenAmount,
 } from "@/lib/format";
-import { getBlockExplorerTxUrl } from "@/lib/chains";
+import { getBlockExplorerTxUrl, isSupportedChain } from "@/lib/chains";
 import { useWeb3Context } from "@/providers/Web3Context";
+import { WrongNetworkBanner } from "@/components/wallet/WrongNetworkBanner";
 import { cn } from "@/lib/utils";
 
 type TokenSymbol = (typeof TOKEN_LIST)[number]["symbol"];
@@ -87,6 +88,7 @@ export function AddLiquidity() {
       isDeploymentConfigured(deployment),
     [status, account, chainId, chain, deployment],
   );
+  const supported = isSupportedChain(chainId);
   const routerAddr = deployment?.router ?? null;
 
   const isWETHA = tokenASymbol === "WETH";
@@ -457,6 +459,8 @@ export function AddLiquidity() {
         </div>
       </div>
 
+      <WrongNetworkBanner />
+
       {/* Token A input */}
       <div className="space-y-1 rounded-xl border border-border bg-secondary/50 p-3">
         <div className="flex items-center justify-between text-xs text-muted-foreground">
@@ -580,7 +584,7 @@ export function AddLiquidity() {
       )}
 
       {/* Transaction feedback - error */}
-      {liq.error && liq.phase !== "rejected" && (
+      {supported && liq.error && liq.phase !== "rejected" && (
         <div className="mt-3 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
           <p className="font-medium">{liq.error.message}</p>
         </div>
