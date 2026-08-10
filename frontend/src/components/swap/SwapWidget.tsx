@@ -33,7 +33,7 @@ function TokenSelect({ value, onChange, disabledOption, chainId }: TokenSelectPr
     <select
       value={value}
       onChange={(e) => onChange(e.target.value as TokenSymbol)}
-      className="h-10 cursor-pointer rounded-md border border-border bg-background px-2 py-1.5 text-sm font-medium shadow-sm outline-none focus:ring-2 focus:ring-ring"
+      className="h-11 min-w-0 cursor-pointer rounded-md border border-border bg-background px-2 py-1.5 text-sm font-medium shadow-sm outline-none focus:ring-2 focus:ring-ring"
     >
       {TOKEN_LIST.map((t) => {
         const unavailable = getTokenAddress(t.symbol, chainId ?? 0) === null;
@@ -398,14 +398,14 @@ export function SwapWidget() {
       <WrongNetworkBanner />
 
       <div className="space-y-1 rounded-xl border border-border bg-secondary/50 p-3">
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
+        <div className="flex min-w-0 items-center justify-between text-xs text-muted-foreground">
           <span>You pay</span>
-          <span>
+          <span className="min-w-0 truncate text-right">
             Balance:{" "}
             {formatTokenAmount(tokenInMeta.balance, tokenIn.decimals)}
           </span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex min-w-0 items-center gap-2">
           <TokenSelect
             value={tokenInSymbol}
             onChange={handleTokenInChange}
@@ -419,7 +419,7 @@ export function SwapWidget() {
             placeholder="0.0"
             value={amountInStr}
             onChange={(e) => setAmountInStr(e.target.value)}
-            className="flex-1 bg-transparent py-2 text-right text-2xl font-medium outline-none placeholder:text-muted-foreground/50"
+            className="min-w-0 flex-1 bg-transparent py-2 text-right text-2xl font-medium outline-none placeholder:text-muted-foreground/50"
           />
         </div>
       </div>
@@ -436,11 +436,11 @@ export function SwapWidget() {
       </div>
 
       <div className="space-y-1 rounded-xl border border-border bg-secondary/50 p-3">
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
+        <div className="flex min-w-0 items-center justify-between text-xs text-muted-foreground">
           <span>You receive</span>
-          <span>{tokenOut.name}</span>
+          <span className="min-w-0 truncate text-right">{tokenOut.name}</span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex min-w-0 items-center gap-2">
           <TokenSelect
             value={tokenOutSymbol}
             onChange={handleTokenOutChange}
@@ -456,26 +456,26 @@ export function SwapWidget() {
                 ? ""
                 : formatTokenAmountFixed(swap.amountOutEstimated, tokenOut.decimals, 6)
             }
-            className="flex-1 bg-transparent py-2 text-right text-2xl font-medium outline-none placeholder:text-muted-foreground/50"
+            className="min-w-0 flex-1 bg-transparent py-2 text-right text-2xl font-medium outline-none placeholder:text-muted-foreground/50"
           />
         </div>
       </div>
 
       {hasAmount && pair.pairAddress && swap.amountOutEstimated && swap.amountOutEstimated > 0n && (
         <div className="mt-3 flex flex-col gap-1 rounded-lg border border-border bg-background/50 p-3 text-xs">
-          <div className="flex items-center justify-between">
+          <div className="flex min-w-0 items-center justify-between">
             <span className="text-muted-foreground">Price impact</span>
-            <span className={cn("font-medium", impactColor)}>
+            <span className={cn("min-w-0 font-medium", impactColor)}>
               {formatBasisPoints(swap.priceImpactPctBp, 2)}
             </span>
           </div>
-          <div className="flex items-center justify-between">
+          <div className="flex min-w-0 items-center justify-between">
             <span className="text-muted-foreground">Fee</span>
-            <span className="font-medium text-foreground">0.30%</span>
+            <span className="min-w-0 font-medium text-foreground">0.30%</span>
           </div>
-          <div className="flex items-center justify-between">
+          <div className="flex min-w-0 items-center justify-between">
             <span className="text-muted-foreground">Minimum received</span>
-            <span className="font-medium text-foreground">
+            <span className="min-w-0 break-words text-right font-medium text-foreground">
               {formatTokenAmountFixed(amountOutMin, tokenOut.decimals, 6)}{" "}
               {tokenOut.symbol}
             </span>
@@ -548,7 +548,7 @@ export function SwapWidget() {
           <button
             type="button"
             onClick={handleReset}
-            className="mt-2 w-full rounded-md border border-green-200 bg-background px-3 py-1.5 text-sm font-medium text-foreground hover:bg-green-100 dark:border-green-900 dark:hover:bg-green-900"
+            className="mt-2 h-11 w-full rounded-md border border-green-200 bg-background px-3 text-sm font-medium text-foreground hover:bg-green-100 dark:border-green-900 dark:hover:bg-green-900"
           >
             Swap again
           </button>
@@ -560,7 +560,7 @@ export function SwapWidget() {
           type="button"
           onClick={handleApprove}
           disabled={isApproving || !networkReady}
-          className="mt-3 w-full rounded-md bg-secondary px-3 py-2.5 text-sm font-medium text-secondary-foreground transition-colors hover:bg-accent disabled:opacity-60"
+          className="mt-3 h-11 w-full rounded-md bg-secondary px-3 text-sm font-medium text-secondary-foreground transition-colors hover:bg-accent disabled:opacity-60"
         >
           {isApproving ? "Approving…" : "Approve"}
         </button>
@@ -570,7 +570,7 @@ export function SwapWidget() {
         type="button"
         onClick={handleSwap}
         disabled={swapDisabled}
-        className="mt-3 w-full rounded-md bg-primary px-3 py-2.5 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-60"
+        className="mt-3 h-11 w-full rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-60"
       >
         {buttonLabel}
       </button>

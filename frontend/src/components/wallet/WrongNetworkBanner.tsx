@@ -23,8 +23,8 @@ export function WrongNetworkBanner() {
       <ul className="mt-2 list-disc space-y-0.5 pl-4 text-destructive/80">
         <li>网络名称 (Network name): Sepolia</li>
         <li>链 ID (Chain ID): 11155111</li>
-        <li>RPC URL: https://ethereum-sepolia-rpc.publicnode.com</li>
-        <li>浏览器 (Explorer): https://sepolia.etherscan.io</li>
+        <li className="break-all">RPC URL: https://ethereum-sepolia-rpc.publicnode.com</li>
+        <li className="break-all">浏览器 (Explorer): https://sepolia.etherscan.io</li>
       </ul>
       <p className="mt-2 text-xs text-destructive/70">
         Use MetaMask&apos;s network switcher or add a custom network with the

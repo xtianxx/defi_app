@@ -96,7 +96,7 @@ export function FaucetWidget({ deployment }: FaucetWidgetProps) {
       </div>
 
       {!account && (
-        <div className="space-y-3 rounded-xl border border-border bg-secondary/50 p-4 text-center">
+        <div className="min-w-0 space-y-3 rounded-xl border border-border bg-secondary/50 p-4 text-center">
           <p className="text-sm text-muted-foreground">
             Connect your wallet to request demo tokens.
           </p>
@@ -106,10 +106,10 @@ export function FaucetWidget({ deployment }: FaucetWidgetProps) {
 
       {account && !supported && (
         <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
-          <p className="font-medium">
+          <p className="break-words font-medium">
             请切换到支持的网络 (Sepolia 11155111 或本地 Anvil 31337)
           </p>
-          <p className="mt-1 text-destructive/80">
+          <p className="mt-1 break-words text-destructive/80">
             Use your wallet&apos;s network switcher to select Sepolia or Anvil
             (local).
           </p>
@@ -128,10 +128,10 @@ export function FaucetWidget({ deployment }: FaucetWidgetProps) {
             <table className="w-full text-sm">
               <thead className="bg-muted/50">
                 <tr>
-                  <th className="px-3 py-2 text-left font-medium text-muted-foreground">
+                  <th className="min-w-0 px-3 py-2 text-left font-medium text-muted-foreground">
                     Token
                   </th>
-                  <th className="px-3 py-2 text-right font-medium text-muted-foreground">
+                  <th className="min-w-0 px-3 py-2 text-right font-medium text-muted-foreground">
                     Amount
                   </th>
                 </tr>
@@ -140,8 +140,8 @@ export function FaucetWidget({ deployment }: FaucetWidgetProps) {
                 {faucet.grantAmounts.map(
                   (grant: { symbol: string; amount: string; decimals: number }) => (
                     <tr key={grant.symbol}>
-                      <td className="px-3 py-2 font-medium">{grant.symbol}</td>
-                      <td className="px-3 py-2 text-right tabular-nums">
+                      <td className="min-w-0 px-3 py-2 font-medium">{grant.symbol}</td>
+                      <td className="min-w-0 break-words px-3 py-2 text-right tabular-nums">
                         {formatGrantAmount(grant.amount, grant.decimals)}{" "}
                         {grant.symbol}
                       </td>

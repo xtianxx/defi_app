@@ -90,12 +90,12 @@ function PositionPickerRow({
           : "border-border bg-secondary/50 text-foreground hover:bg-accent",
       )}
     >
-      <span className="font-medium">
+      <span className="min-w-0 font-medium">
         {symbolA} / {symbolB}
       </span>
-      <div className="flex flex-col items-start gap-0.5 sm:items-end">
-        <span>{formatTokenAmount(lpBalance, 18)} LP</span>
-        <span className="text-xs text-muted-foreground">
+      <div className="flex min-w-0 flex-col items-start gap-0.5 sm:items-end">
+        <span className="min-w-0">{formatTokenAmount(lpBalance, 18)} LP</span>
+        <span className="min-w-0 text-xs text-muted-foreground">
           {poolSharePct?.toFixed(2) ?? "—"}% of pool
         </span>
       </div>
@@ -504,15 +504,15 @@ export function RemoveLiquidity() {
             </div>
             {estimated ? (
               <div className="flex flex-col gap-1">
-                <div className="flex items-center justify-between">
-                  <span className="font-medium text-foreground">{returnLabelA}</span>
-                  <span className="font-medium text-foreground">
+                <div className="flex min-w-0 items-center justify-between">
+                  <span className="min-w-0 font-medium text-foreground">{returnLabelA}</span>
+                  <span className="min-w-0 break-words text-right font-medium text-foreground">
                     {formatTokenAmountFixed(amountA, tokenA.decimals, 6)} {returnLabelA}
                   </span>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="font-medium text-foreground">{returnLabelB}</span>
-                  <span className="font-medium text-foreground">
+                <div className="flex min-w-0 items-center justify-between">
+                  <span className="min-w-0 font-medium text-foreground">{returnLabelB}</span>
+                  <span className="min-w-0 break-words text-right font-medium text-foreground">
                     {formatTokenAmountFixed(amountB, tokenB.decimals, 6)} {returnLabelB}
                   </span>
                 </div>
@@ -549,9 +549,9 @@ export function RemoveLiquidity() {
               type="checkbox"
               checked={usePermit}
               onChange={(e) => setUsePermit(e.target.checked)}
-              className="h-4 w-4 rounded border-border"
+              className="h-4 w-4 shrink-0 rounded border-border"
             />
-            <div className="flex flex-col">
+            <div className="flex min-w-0 flex-col">
               <span className="font-medium text-foreground">Use permit instead of approve</span>
               <span className="text-xs text-muted-foreground">
                 Sign one signature instead of an approval transaction.
@@ -588,7 +588,7 @@ export function RemoveLiquidity() {
               <button
                 type="button"
                 onClick={handleReset}
-                className="mt-2 w-full rounded-md border border-green-200 bg-background px-3 py-1.5 text-sm font-medium text-foreground hover:bg-green-100 dark:border-green-900 dark:hover:bg-green-900"
+                className="mt-2 h-11 w-full rounded-md border border-green-200 bg-background px-3 text-sm font-medium text-foreground hover:bg-green-100 dark:border-green-900 dark:hover:bg-green-900"
               >
                 Remove another position
               </button>
@@ -600,7 +600,7 @@ export function RemoveLiquidity() {
             type="button"
             onClick={handleRemoveLiquidity}
             disabled={buttonDisabled}
-            className="w-full rounded-md bg-primary px-3 py-2.5 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-60"
+            className="h-11 w-full rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-60"
           >
             {buttonLabel}
           </button>

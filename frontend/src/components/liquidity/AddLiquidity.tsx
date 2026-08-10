@@ -32,7 +32,7 @@ function TokenSelect({ value, onChange, disabledOption, chainId }: TokenSelectPr
     <select
       value={value}
       onChange={(e) => onChange(e.target.value as TokenSymbol)}
-      className="h-10 cursor-pointer rounded-md border border-border bg-background px-2 py-1.5 text-sm font-medium shadow-sm outline-none focus:ring-2 focus:ring-ring"
+      className="h-10 min-w-0 cursor-pointer rounded-md border border-border bg-background px-2 py-1.5 text-sm font-medium shadow-sm outline-none focus:ring-2 focus:ring-ring"
     >
       {TOKEN_LIST.map((t) => {
         const unavailable = getTokenAddress(t.symbol, chainId ?? 0) === null;
@@ -463,15 +463,15 @@ export function AddLiquidity() {
 
       {/* Token A input */}
       <div className="space-y-1 rounded-xl border border-border bg-secondary/50 p-3">
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
+        <div className="flex min-w-0 items-center justify-between text-xs text-muted-foreground">
           <span>{isWETHA ? "ETH" : tokenASymbol}</span>
           {!isWETHA && (
-            <span>
+            <span className="min-w-0 truncate text-right">
               Balance: {formatTokenAmount(tokenAMeta.balance, tokenA.decimals)}
             </span>
           )}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex min-w-0 items-center gap-2">
           <TokenSelect
             value={tokenASymbol}
             onChange={handleTokenAChange}
@@ -485,7 +485,7 @@ export function AddLiquidity() {
             placeholder="0.0"
             value={amountAStr}
             onChange={(e) => setAmountAStr(e.target.value)}
-            className="flex-1 bg-transparent py-2 text-right text-2xl font-medium outline-none placeholder:text-muted-foreground/50"
+            className="min-w-0 flex-1 bg-transparent py-2 text-right text-2xl font-medium outline-none placeholder:text-muted-foreground/50"
           />
         </div>
         {isWETHA && (
@@ -501,15 +501,15 @@ export function AddLiquidity() {
 
       {/* Token B input */}
       <div className="space-y-1 rounded-xl border border-border bg-secondary/50 p-3">
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
+        <div className="flex min-w-0 items-center justify-between text-xs text-muted-foreground">
           <span>{isWETHB ? "ETH" : tokenBSymbol}</span>
           {!isWETHB && (
-            <span>
+            <span className="min-w-0 truncate text-right">
               Balance: {formatTokenAmount(tokenBMeta.balance, tokenB.decimals)}
             </span>
           )}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex min-w-0 items-center gap-2">
           <TokenSelect
             value={tokenBSymbol}
             onChange={handleTokenBChange}
@@ -523,7 +523,7 @@ export function AddLiquidity() {
             placeholder="0.0"
             value={amountBStr}
             onChange={(e) => setAmountBStr(e.target.value)}
-            className="flex-1 bg-transparent py-2 text-right text-2xl font-medium outline-none placeholder:text-muted-foreground/50"
+            className="min-w-0 flex-1 bg-transparent py-2 text-right text-2xl font-medium outline-none placeholder:text-muted-foreground/50"
           />
         </div>
         {isWETHB && (
@@ -543,14 +543,14 @@ export function AddLiquidity() {
       {/* Optimal ratio guidance */}
       {!isFirstProvider && optimal && hasAmountA && (
         <div className="mt-3 rounded-lg border border-border bg-background/50 p-3 text-xs">
-          <div className="flex items-center justify-between">
+          <div className="flex min-w-0 items-center justify-between">
             <span className="text-muted-foreground">Optimal ratio</span>
-            <span className="font-medium text-foreground">
+            <span className="min-w-0 break-words text-right font-medium text-foreground">
               {formatTokenAmountFixed(optimal.amountB, tokenB.decimals, 6)} {tokenBSymbol} per {formatTokenAmountFixed(optimal.amountA, tokenA.decimals, 4)} {tokenASymbol}
             </span>
           </div>
           {deviationBp !== null && deviationBp > slippageBp && (
-            <p className="mt-1 text-yellow-600 dark:text-yellow-500">
+            <p className="mt-1 break-words text-yellow-600 dark:text-yellow-500">
               {deviationBp > 500 ? "⚠" : "ℹ"} Price deviation: {formatBasisPoints(deviationBp, 2)} — your position may be subject to significant impermanent loss.
             </p>
           )}
@@ -560,13 +560,13 @@ export function AddLiquidity() {
       {/* Fee info */}
       {hasAmountA && hasAmountB && (
         <div className="mt-3 flex flex-col gap-1 rounded-lg border border-border bg-background/50 p-3 text-xs">
-          <div className="flex items-center justify-between">
+          <div className="flex min-w-0 items-center justify-between">
             <span className="text-muted-foreground">Fee tier</span>
-            <span className="font-medium text-foreground">0.30%</span>
+            <span className="min-w-0 font-medium text-foreground">0.30%</span>
           </div>
-          <div className="flex items-center justify-between">
+          <div className="flex min-w-0 items-center justify-between">
             <span className="text-muted-foreground">Minimum amounts</span>
-            <span className="font-medium text-foreground">
+            <span className="min-w-0 break-words text-right font-medium text-foreground">
               {formatTokenAmountFixed(amountAMin, tokenA.decimals, 4)} {tokenASymbol} / {formatTokenAmountFixed(amountBMin, tokenB.decimals, 4)} {tokenBSymbol}
             </span>
           </div>
@@ -612,7 +612,7 @@ export function AddLiquidity() {
           <button
             type="button"
             onClick={handleReset}
-            className="mt-2 w-full rounded-md border border-green-200 bg-background px-3 py-1.5 text-sm font-medium text-foreground hover:bg-green-100 dark:border-green-900 dark:hover:bg-green-900"
+            className="mt-2 h-11 w-full rounded-md border border-green-200 bg-background px-3 text-sm font-medium text-foreground hover:bg-green-100 dark:border-green-900 dark:hover:bg-green-900"
           >
             Add another position
           </button>
@@ -624,7 +624,7 @@ export function AddLiquidity() {
         type="button"
         onClick={handleAction}
         disabled={buttonDisabled}
-        className="mt-3 w-full rounded-md bg-primary px-3 py-2.5 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-60"
+        className="mt-3 h-11 w-full rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-60"
       >
         {buttonLabel}
       </button>
