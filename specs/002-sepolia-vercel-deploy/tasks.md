@@ -23,7 +23,7 @@
 
 - [X] T001 Create `contracts/.env.example` with placeholders for `SEPOLIA_RPC_URL`, `ETHERSCAN_API_KEY`, `SEPOLIA_DEPLOYER_KEY` (comments noting they are server/deploy-only, never `NEXT_PUBLIC_`); confirm `.env` is gitignored (contracts/ or root `.gitignore` — verify no `.env` is tracked)
 - [X] T002 [P] Generate 3 fresh Sepolia demo keys with `cast wallet new` (never reuse anvil's well-known keys — plan D5): **master** (deployer + replenishment source; store key in `contracts/.env` as `SEPOLIA_DEPLOYER_KEY`, NEVER documented), **LP provider**, **swapper**; record the two demo addresses in a draft section of `specs/002-sepolia-vercel-deploy/demo-guide.md` (credentials finalized in T019/T031)
-- [ ] T003 [P] Fund the **master** account with 0.25–0.5 ETH via public Sepolia faucets following research.md R0.1 checklist (budget: ~0.02–0.03 ETH deploy gas + demo-account ETH/WETH funding + 0.2 ETH initial faucet WETH reserve — see T010; Chainstack one-shot tops to 0.5 ETH, else Google Cloud Web3 faucet + ethfaucet supplement over a few days; pk910 PoW as emergency fallback); verify with `cast balance <master> --rpc-url "$SEPOLIA_RPC_URL"` — faucet payouts can take minutes-to-hours, re-check before proceeding
+- [X] T003 [P] Fund the **master** account with 0.25–0.5 ETH via public Sepolia faucets following research.md R0.1 checklist (budget: ~0.02–0.03 ETH deploy gas + demo-account ETH/WETH funding + 0.2 ETH initial faucet WETH reserve — see T010; Chainstack one-shot tops to 0.5 ETH, else Google Cloud Web3 faucet + ethfaucet supplement over a few days; pk910 PoW as emergency fallback); verify with `cast balance <master> --rpc-url "$SEPOLIA_RPC_URL"` — faucet payouts can take minutes-to-hours, re-check before proceeding
 
 ---
 
