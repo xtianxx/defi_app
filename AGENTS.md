@@ -1,13 +1,13 @@
 # PROJECT KNOWLEDGE BASE
 
 **Generated:** 2026-08-10
-**Commit:** f8d28b3
+**Commit:** 75311e2
 **Branch:** 002-sepolia-vercel-deploy
 
 ## OVERVIEW
 Monorepo for a Uniswap V2–style DEX resume project. Two independent packages — `contracts/` (Foundry; core + router implemented) and `frontend/` (Next.js 15 App Router dApp) — plus `specs/` (authoritative feature docs). The old Vite/`Counter.sol` scaffold is gone; the dev loop lives in root `scripts/`.
 
-Two feature specs exist: `001-uniswap-v2-resume` (the DEX itself, fully implemented) and `002-sepolia-vercel-deploy` (Sepolia testnet + Vercel hosting + demo accounts/faucet for interviewers — **spec-phase only, no code changes yet**; contracts/frontend remain anvil-only until implemented).
+Two feature specs exist: `001-uniswap-v2-resume` (the DEX itself, fully implemented) and `002-sepolia-vercel-deploy` (Sepolia testnet + Vercel hosting + demo accounts/faucet for interviewers — **plan-phase complete, no code changes yet**; contracts/frontend remain anvil-only until implemented). 002's design artifacts (plan/research/data-model/quickstart/contract interfaces) are committed in `specs/002-sepolia-vercel-deploy/`; its implementation will add a `DemoFaucet` contract, multi-chain frontend wiring (Sepolia chainId 11155111), and a `/faucet` page.
 
 ## DEV WORKFLOW (use these first)
 | Command | Purpose |
@@ -34,7 +34,7 @@ frontend/       Next.js 15 App Router · React 19 · TS 6 strict · ethers v6 ·
   tests/          unit/ (vitest + testing-library, jsdom); e2e/ and load/ are EMPTY
 scripts/        dev-deploy.sh, test-unit.sh, test-e2e.sh, test-e2e-phase5.sh — the canonical dev loop
 specs/001-uniswap-v2-resume/   spec.md · plan.md · tasks.md · quickstart.md (runnable guide)
-specs/002-sepolia-vercel-deploy/  spec.md · checklists/requirements.md (Draft; no plan/tasks yet)
+specs/002-sepolia-vercel-deploy/  spec.md · plan.md · research.md · data-model.md · quickstart.md · contracts/ (faucet + frontend API contracts) — plan complete, no code yet
 .github/workflows/test.yml     CI: contracts fmt→build(--sizes)→test; frontend tsc→lint→vitest→build
 .specify/       Speckit planning framework + constitution.md (5 principles; CI gates cite them)
 ```
@@ -42,7 +42,7 @@ specs/002-sepolia-vercel-deploy/  spec.md · checklists/requirements.md (Draft; 
 ## WHERE TO LOOK
 | Task | Location |
 |---|---|
-| Spec / plan / task breakdown | specs/001-uniswap-v2-resume/{spec,plan,tasks}.md (implemented) · specs/002-sepolia-vercel-deploy/spec.md (Draft — Sepolia/Vercel demo) |
+| Spec / plan / task breakdown | specs/001-uniswap-v2-resume/{spec,plan,tasks}.md (implemented) · specs/002-sepolia-vercel-deploy/{spec,plan,research,data-model,quickstart}.md + contracts/ (Sepolia/Vercel demo — plan complete, no code yet) |
 | Runnable validation guide | specs/001-uniswap-v2-resume/quickstart.md |
 | Research / data model / phase checklists | specs/001-uniswap-v2-resume/{research,data-model}.md · specs/001-uniswap-v2-resume/checklists/ |
 | Governing rules (v1.1.0) | .specify/memory/constitution.md |
@@ -53,7 +53,7 @@ specs/002-sepolia-vercel-deploy/  spec.md · checklists/requirements.md (Draft; 
 - **Packages independent** — no root workspace, no cross-package imports
 - **Tests**: contracts `test/*.t.sol` (`test_*()` / `testFuzz_*()`); frontend `tests/unit/*.test.{ts,tsx}`; `@/` alias → `src/` (tsconfig + vitest)
 - **ethers v6 split**: server reads = JsonRpcProvider in route handlers; client writes = BrowserProvider via Web3Provider context
-- **Generated bindings**: `sync-deploy.ts` overwrites **tracked** `addresses.ts` + `tokens.ts` + `abis.ts`; `abis.generated.ts` is **gitignored** (legacy, not regenerated) — `forge build` + deploy first, then `node scripts/sync-deploy.ts <chainId>` (auto-finds `broadcast/DeployDemo.s.sol/<chainId>/run-latest.json`)
+- **Generated bindings**: `sync-deploy.ts` overwrites **tracked** `addresses.ts` + `tokens.ts` + `abis.ts`; `abis.generated.ts` is **gitignored** (legacy, not regenerated). Run via `npm run sync-deploy` in frontend/ — **no CLI args**; chainIds are **hardcoded `[31337]`** in the script (002 implementation will extend to `[11155111]`); auto-finds `broadcast/DeployDemo.s.sol/<chainId>/run-latest.json` — `forge build` + deploy first
 - **No .env needed** — chains/RPC hardcoded in `lib/chains.ts` for the anvil chain (chainId 31337)
 
 ## GOTCHAS
