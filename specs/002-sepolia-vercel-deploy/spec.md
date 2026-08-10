@@ -8,6 +8,15 @@
 
 **Input**: User description: "目前该项目只能在anvil中运行本地测试，所以我打算优化一些测试账户，将该项目后端部署到sepolia测试网上，而前端则是部署的vercal上，并且通过提供一些示例账户和测试币，来方便向面试官展示" (Currently the project only runs local tests on anvil; deploy the backend to the Sepolia testnet and the frontend to Vercel, and provide sample accounts and test tokens so the project can be demonstrated to interviewers)
 
+## Clarifications
+
+### Session 2026-08-10
+
+- Q: 应用内水龙头（Faucet）是否纳入本次范围？→ A: 纳入，采用纯合约方式实现（时间窗口限流，如每钱包每 24 小时一次），不做后端服务
+- Q: 面试演示指南（Demo Guide）用什么语言？→ A: 中文为主
+- Q: 演示账户的测试 ETH 如何补充？→ A: 混合方案——部署时一次性从公共水龙头充值到主资金账户，补币以主账户 cast 命令转账为主（秒级到账），公共水龙头为兜底
+- Q: RPC 节点和合约验证用哪个服务商？→ A: RPC 用 Alchemy/Infura 免费额度（公共 RPC 不可靠，用户实际使用该方案）；合约验证用 Etherscan 免费 API key
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Publicly Accessible DEX Demo on Sepolia (Priority: P1)
@@ -44,11 +53,11 @@ The interviewer receives a small set of sample accounts (documented credentials)
 
 ---
 
-### User Story 3 - In-App Test Token Faucet (Priority: P2)
+### User Story 3 - In-App Test Token Faucet (Priority: P1)
 
 Visitors (including the interviewer's own wallet) can request project test tokens directly from the app, making the demo self-service and resilient to third-party faucet outages.
 
-**Why this priority**: This is a convenience and resilience layer on top of the seeded accounts; without it the demo still works, but with it the demo becomes self-service and survives unexpected balance drains.
+**Why this priority**: Clarified in-scope for this feature (2026-08-10): implemented as a pure on-chain faucet contract with time-window rate limiting (e.g., one request per wallet per 24h) — no backend service, no server-held private keys. This is a self-service layer on top of the seeded accounts that survives unexpected balance drains.
 
 **Independent Test**: Can be fully tested by connecting any wallet and requesting a token grant from the app; the balance should appear on-chain within one minute. Delivers "any visitor can obtain test tokens without leaving the app".
 
@@ -94,10 +103,10 @@ A concise, non-technical guide (demo script) tells the interviewer what to open,
 - **FR-002**: The frontend MUST be accessible to anyone via a stable public URL
 - **FR-003**: The frontend MUST operate against the Sepolia deployment, detecting the connected network and clearly guiding users to switch when the network is wrong
 - **FR-004**: At least two demo accounts MUST be provided with documented credentials, each pre-funded with test ETH and a defined set of project test tokens (roles: liquidity provider and swapper)
-- **FR-005**: A mechanism MUST exist to replenish test ETH and project test tokens for demo accounts, documented and executable within 5 minutes
+- **FR-005**: A mechanism MUST exist to replenish test ETH and project test tokens for demo accounts, documented and executable within 5 minutes (primary path: transfer from a master funding account charged once via public Sepolia faucets; fallback: public faucets)
 - **FR-006**: Liquidity pools MUST be pre-seeded on Sepolia so the swap, liquidity, and portfolio pages show realistic on-chain data at first load
-- **FR-007**: All deployed contracts MUST be verified on a public block explorer, with source code and addresses publicly viewable
-- **FR-008**: The project MAY provide an in-app faucet to grant project test tokens to any connected wallet, subject to rate limits
+- **FR-007**: All deployed contracts MUST be verified on Sepolia Etherscan (free API key), with source code and addresses publicly viewable
+- **FR-008**: The project MUST provide an in-app faucet to grant project test tokens to any connected wallet, implemented as a pure on-chain faucet contract with time-window rate limiting (e.g., one request per wallet per 24h) and no backend service
 - **FR-009**: The existing local development flow (local testnet) MUST keep working unchanged after this feature ships (regression requirement)
 - **FR-010**: A developer MUST be able to reproduce the full deployment (contracts and frontend) from the documentation alone in under 30 minutes
 - **FR-011**: The app MUST present human-readable errors for the common demo failure modes: wrong network, insufficient balance, failed transaction, and missing approval
@@ -110,7 +119,7 @@ A concise, non-technical guide (demo script) tells the interviewer what to open,
 - **Test Token**: A fungible token deployed on Sepolia representing the project's standard set (WETH, USDC, DAI, WBTC equivalents), used by the swap and liquidity flows
 - **Liquidity Pool**: A pair contract on Sepolia holding seeded reserves of two tokens; backs the swap, liquidity, and portfolio pages
 - **Contract Deployment**: The set of on-chain addresses (factory, router, tokens, pairs) with verified source code on the public explorer
-- **Faucet Grant**: A record of token disbursement to a wallet, subject to a rate limit, ensuring fair and repeatable demo use
+- **Faucet Grant**: A record of token disbursement to a wallet, enforced on-chain via a time-window rate limit (e.g., one request per wallet per 24h), ensuring fair and repeatable demo use
 
 ## Success Criteria *(mandatory)*
 
@@ -129,7 +138,7 @@ A concise, non-technical guide (demo script) tells the interviewer what to open,
 - The target testnet is Sepolia; no mainnet deployment is in scope
 - The interviewer connects with their own browser wallet (e.g., MetaMask) and can import a provided demo account; exposing testnet-only private keys is an accepted, documented risk
 - Project test tokens are deployed on Sepolia mirroring the existing token set (WETH, USDC, DAI, WBTC); the demo does not depend on third-party token faucets
-- Test ETH is funded during setup via public Sepolia faucets; the in-app faucet covers project tokens only
+- Test ETH is funded once during setup via public Sepolia faucets into a master funding account; demo-account replenishment uses master-account transfers as the primary path (one `cast` command, seconds to confirm) with public faucets as fallback; the in-app faucet covers project tokens only
 - Hosting uses a free/hobby tier with a standard public URL; no custom domain is required
-- A public RPC endpoint for Sepolia is used; if a provider key is required, the setup documentation records it
-- The demo guide is in the same language as the project's other documentation (English), with account credentials and addresses published inside the guide
+- Sepolia RPC uses an Alchemy/Infura free-tier endpoint (API key recorded in setup docs); public RPCs were found unreliable and are not used
+- The demo guide is in Chinese (primary), with account credentials and addresses published inside the guide
