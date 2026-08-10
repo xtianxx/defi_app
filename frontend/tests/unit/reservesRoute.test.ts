@@ -23,6 +23,7 @@ import { GET, PairNotFoundError, fetchReserves } from "@/app/api/reserves/route"
 const PAIR = "0xpair00000000000000000000000000000000000000aa";
 const ACCOUNT = "0xaccount000000000000000000000000000000000000a";
 const CHAIN_ID = 31337;
+const SEPOLIA_CHAIN_ID = 11155111;
 
 const RESERVES = [1000n * 10n ** 18n, 2000n * 10n ** 18n, 123n];
 const CODE = "0x600d600d600d";
@@ -130,5 +131,46 @@ describe("api/reserves route", () => {
     expect(res.status).toBe(502);
     expect(res.headers.get("Retry-After")).toBe("2");
     expect(await res.json()).toEqual({ error: "rpc error", detail: "connection refused" });
+  });
+
+  it("fetchReserves passes chainId=11155111 to the provider factory", async () => {
+    const data = await fetchReserves(PAIR, ACCOUNT, SEPOLIA_CHAIN_ID);
+
+    expect(createServerProviderMock).toHaveBeenCalledWith(SEPOLIA_CHAIN_ID);
+    expect(providerMock.getCode).toHaveBeenCalledWith(PAIR);
+    expect(data.reserve0).toBe("1000000000000000000000");
+    expect(data.lpBalance).toBe("77");
+  });
+
+  it("GET with chainId=11155111 serves reserves (Sepolia path)", async () => {
+    const res = await GET(
+      new Request(
+        `http://localhost:3000/api/reserves?pair=${PAIR}&account=${ACCOUNT}&chainId=${SEPOLIA_CHAIN_ID}`,
+      ),
+    );
+
+    expect(res.status).toBe(200);
+    expect(createServerProviderMock).toHaveBeenCalledWith(SEPOLIA_CHAIN_ID);
+    const body = await res.json();
+    expect(body.lpBalance).toBe("77");
+  });
+
+  it("GET returns 500 with a clear message when Sepolia env is not configured", async () => {
+    createServerProviderMock.mockImplementation(() => {
+      throw new Error("SEPOLIA_RPC_URL not configured");
+    });
+
+    const res = await GET(
+      new Request(
+        `http://localhost:3000/api/reserves?pair=${PAIR}&account=${ACCOUNT}&chainId=${SEPOLIA_CHAIN_ID}`,
+      ),
+    );
+
+    expect(res.status).toBe(500);
+    expect(res.headers.get("Retry-After")).toBeNull();
+    expect(await res.json()).toEqual({
+      error: "rpc not configured",
+      detail: "SEPOLIA_RPC_URL not configured",
+    });
   });
 });

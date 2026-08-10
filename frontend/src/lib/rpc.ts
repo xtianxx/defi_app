@@ -3,14 +3,21 @@
 // Spec: frontend-module-api.md §1, research.md R0.5.
 
 import { BrowserProvider, JsonRpcProvider, FallbackProvider } from "ethers";
-import { CHAINS } from "./chains";
+import { ANVIL_CHAIN_ID, CHAINS, SEPOLIA_CHAIN_ID } from "./chains";
 
-export function createServerProvider(chainId: number): JsonRpcProvider {
+export function createServerProvider(chainId: number = ANVIL_CHAIN_ID): JsonRpcProvider {
   const chain = CHAINS[chainId];
   if (!chain) {
     throw new Error(`Unsupported chainId ${chainId} for server provider`);
   }
-  return new JsonRpcProvider(chain.rpcUrl, chainId, { staticNetwork: true });
+  // Sepolia's static rpcUrl is empty (R0.2) — resolve the URL from the env var
+  // INSIDE the function body: server-only, never at module top level, never in
+  // client-imported code (frontend-module-api.md §2).
+  const rpcUrl = chainId === SEPOLIA_CHAIN_ID ? process.env.SEPOLIA_RPC_URL : chain.rpcUrl;
+  if (!rpcUrl) {
+    throw new Error("SEPOLIA_RPC_URL not configured");
+  }
+  return new JsonRpcProvider(rpcUrl, chainId, { staticNetwork: true });
 }
 
 export function createClientProvider(): BrowserProvider | null {

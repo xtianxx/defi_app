@@ -15,6 +15,7 @@ export interface ChainConfig {
 }
 
 export const ANVIL_CHAIN_ID = 31337;
+export const SEPOLIA_CHAIN_ID = 11155111;
 
 export const CHAINS: Record<number, ChainConfig> = {
   [ANVIL_CHAIN_ID]: {
@@ -23,6 +24,16 @@ export const CHAINS: Record<number, ChainConfig> = {
     name: "Anvil (local)",
     rpcUrl: "http://127.0.0.1:8545",
     explorerUrl: "http://127.0.0.1:8545",
+    nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+  },
+  [SEPOLIA_CHAIN_ID]: {
+    chainId: SEPOLIA_CHAIN_ID,
+    hex: "0xaa36a7" as `0x${string}`,
+    name: "Sepolia",
+    // Deliberately empty (R0.2): never baked into client-importable code.
+    // Resolved server-side from SEPOLIA_RPC_URL — see rpc.ts createServerProvider.
+    rpcUrl: "",
+    explorerUrl: "https://sepolia.etherscan.io",
     nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
   },
 };

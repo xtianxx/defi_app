@@ -122,6 +122,14 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "pair not found" }, { status: 404 });
     }
     const detail = err instanceof Error ? err.message : String(err);
+    // Missing SEPOLIA_RPC_URL is a server misconfiguration (500), distinct
+    // from runtime RPC failures (502 + Retry-After). frontend-module-api.md §2.
+    if (detail === "SEPOLIA_RPC_URL not configured") {
+      return NextResponse.json(
+        { error: "rpc not configured", detail },
+        { status: 500 },
+      );
+    }
     return NextResponse.json(
       { error: "rpc error", detail },
       { status: 502, headers: { "Retry-After": "2" } },
