@@ -19,6 +19,9 @@ export function Navbar() {
           <Link href="/portfolio" className="hover:opacity-80">
             Portfolio
           </Link>
+          <Link href="/faucet" className="hover:opacity-80">
+            Faucet
+          </Link>
           <Link href="/debug" className="hover:opacity-80 text-muted-foreground">
             Debug
           </Link>
