@@ -19,6 +19,9 @@ contracts/coverage/
 .vscode/
 .idea/
 
+# Vercel
+.vercel/
+
 # OS
 .DS_Store
 Thumbs.db
