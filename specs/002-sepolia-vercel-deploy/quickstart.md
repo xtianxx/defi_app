@@ -96,6 +96,38 @@ On a clean machine, a developer follows [deployment guide → README] steps 1–
 | VS-4 | FR-009 | SC-006 |
 | VS-5 | FR-010, FR-013 | SC-005, SC-007 |
 
+## Edge Cases
+
+Failure/state conditions the presenter may hit during the demo, mapped to the validation scenarios and the acceptance table above.
+
+### EC-1 RPC Slow/Unavailable (VS-1, VS-5)
+
+`/api/reserves` is the server-side RPC read path (`frontend/src/app/api/reserves/route.ts`; frontend-module-api.md §2): it batches pair reads — `getReserves`, cumulative prices, `totalSupply`, `lpBalance` — into one round trip via `createServerProvider(chainId)`, then serves them through `unstable_cache` (`revalidate: 2`) with `Cache-Control: public, s-maxage=2, stale-while-revalidate=4`.
+
+- **Runtime RPC failure** (timeout, network error, JSON-RPC error) → **HTTP 502** `{ "error": "rpc error", detail }` with a **`Retry-After: 2`** header: consumers should retry after ~2 s. There is no explicit timeout in the handler — the effective bound is the Vercel Hobby function duration limit (300 s, research.md), and Sepolia `eth_call` round trips run ~100–500 ms, so a healthy endpoint never approaches it. While healthy, the 2 s cache (`s-maxage=2` + stale-while-revalidate 4 s) masks brief blips; once it expires, failures surface as 502.
+- **Missing env** — `SEPOLIA_RPC_URL` unset (only reachable with `chainId=11155111`; anvil's RPC is hardcoded in `chains.ts`) → **HTTP 500** `{ "error": "rpc not configured", detail: "SEPOLIA_RPC_URL not configured" }` — a server misconfiguration, deliberately distinct from the runtime-failure 502 (frontend-module-api.md §2).
+- **Other statuses**: `400` missing `pair`/`account`; `404` `"pair not found"` (no deployed code at the pair address).
+- **What the UI shows**: the app's pages currently read reserves through the connected wallet's provider (`usePair`/`usePortfolio`), not through this route — `/api/reserves` serves portfolio-perf consumers and direct verification (frontend-module-api.md §8.4: `curl "/api/reserves?pair=…&account=…&chainId=11155111"`). A provider outage therefore appears in the UI as missing/empty data (widgets fall back to empty states; portfolio surfaces its error string), not as the JSON error body — use `curl` to distinguish "RPC down" (502) from "env missing" (500).
+- **Demo-operator fallback**:
+  1. Check the provider's status page/dashboard (Alchemy/Infura free tier) for an outage or rate-limit spike.
+  2. Create a second free-tier endpoint; update `SEPOLIA_RPC_URL` in `contracts/.env` (local `forge script`/`cast` runs) **and** on Vercel (Settings → Environment Variables, Production + Preview) → redeploy — env changes apply to new deployments only.
+  3. Vercel Hobby retains logs for **1 h** — pull any needed evidence of the failure before that window closes.
+
+### EC-2 Wallet-less Device (VS-1, VS-3)
+
+- The app loads and renders normally without a wallet — no crash, no redirect; the Navbar always shows the Connect button. Wallet-gated reads return empty states and widgets surface connect CTAs:
+  - `/faucet`: "Connect your wallet to request demo tokens." + Connect button (FaucetWidget).
+  - Swap: the action button reads "Connect wallet" (SwapWidget).
+  - Portfolio: "Connect your wallet to view positions and transaction history." + Connect button.
+- The server-side `/api/reserves` route needs **no wallet** — it takes `pair`/`account`/`chainId` as query params, so a wallet-less device (or `curl`) can still read live Sepolia data. In-app live balances/prices, however, require a connected wallet (client reads go through the browser provider).
+- All interactive flows (swap, add/remove liquidity, faucet claim) require a wallet — see demo-guide.md for wallet setup and demo-account import.
+
+### EC-3 Pre-existing Token Balances (VS-2, VS-3)
+
+- Demo accounts may hold **leftover balances** from previous runs: earlier faucet claims, prior demo sessions, replenishment top-ups. The UI always displays real on-chain balances — never assume an account is "fresh" or that a shown balance is zero (spec.md edge case: "Balances, not grants, must be displayed"). If a balance looks unexpected, explain it as the result of a previous claim/run instead of "fixing" it.
+- The faucet's **per-wallet 24 h rate limit** interacts with this: a wallet that already claimed shows the countdown ("下次可领取: Xh Ym 后") with Claim disabled — **not** zero balances. Attempts before `nextEligibleTime` are rate-limited; use a different wallet (e.g., the other demo account) for a live claim, or present the countdown as expected behavior.
+- Cross-references: VS-2 step 2 (expect pre-funded balances — they reflect prior funding, not a freshness guarantee), VS-3 step 4 (rate-limit countdown), acceptance-table rows VS-2/VS-3.
+
 ## Rollback / Cleanup
 
 - Vercel: Settings → Environment Variables remove `SEPOLIA_RPC_URL`; pause project (Hobby keeps URL). No code change required — client never depends on the env var.
