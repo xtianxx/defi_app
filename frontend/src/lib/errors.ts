@@ -7,6 +7,7 @@ export type ErrorCode =
   | "user-rejection"
   | "wallet-missing"
   | "wrong-network"
+  | "insufficient-funds"
   | "insufficient-balance"
   | "allowance"
   | "slippage"
@@ -56,6 +57,10 @@ const MESSAGES: Record<ErrorCode, { message: string; hint?: string }> = {
   "user-rejection": { message: "Transaction rejected", hint: "You declined the signature in your wallet." },
   "wallet-missing": { message: "Wallet not detected", hint: "Install MetaMask or another EIP-1193 wallet." },
   "wrong-network": { message: "Wrong network", hint: "Switch to a supported chain to continue." },
+  "insufficient-funds": {
+    message: "Insufficient ETH for gas",
+    hint: "The faucet only grants tokens, not ETH. Fund this wallet with test ETH (e.g. from a Sepolia public faucet) to pay for the claim transaction.",
+  },
   "insufficient-balance": { message: "Insufficient balance" },
   allowance: { message: "Token allowance too low", hint: "Approve the router to spend this token." },
   slippage: { message: "Slippage exceeded", hint: "Try a higher slippage tolerance or a smaller trade." },
@@ -94,6 +99,10 @@ export function decodeError(err: unknown, _ctx?: { tokenSymbol?: string }): Erro
   if (code === "CALL_EXCEPTION") {
     return decodeCallException(err);
   }
+  // ethers INSUFFICIENT_FUNDS (or RPC "insufficient funds") — wallet can't cover gas + value.
+  if (code === "INSUFFICIENT_FUNDS") {
+    return { code: "insufficient-funds", ...MESSAGES["insufficient-funds"] };
+  }
 
   // 2. String-shaped error (e.g., a direct revert reason).
   if (typeof err === "string") {
@@ -113,6 +122,13 @@ export function decodeError(err: unknown, _ctx?: { tokenSymbol?: string }): Erro
     // Low-level JSON-RPC errors
     if (isError(err, "NETWORK_ERROR") || /network|timeout|fetch failed/i.test(err.message)) {
       return { code: "rpc", ...MESSAGES.rpc };
+    }
+    // ethers INSUFFICIENT_FUNDS / RPC "insufficient funds" (wallet can't cover gas + value)
+    if (
+      code === "INSUFFICIENT_FUNDS" ||
+      (typeof err.message === "string" && /insufficient funds/i.test(err.message))
+    ) {
+      return { code: "insufficient-funds", ...MESSAGES["insufficient-funds"] };
     }
     if (/gas required|estimate gas|out of gas/i.test(err.message)) {
       return { code: "gas-estimation", ...MESSAGES["gas-estimation"] };

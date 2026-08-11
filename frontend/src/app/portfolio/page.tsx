@@ -9,7 +9,8 @@ import { useEarnedFees } from "@/hooks/useEarnedFees";
 import type { HistoryEntry } from "@/hooks/usePortfolio";
 import { useTwapPrice } from "@/hooks/useTwapPrice";
 import { useWeb3Context } from "@/providers/Web3Context";
-import { getBlockExplorerTxUrl } from "@/lib/chains";
+import { getBlockExplorerTxUrl, isSupportedChain } from "@/lib/chains";
+import { WrongNetworkBanner } from "@/components/wallet/WrongNetworkBanner";
 import { getDeployment, isDeploymentConfigured } from "@/lib/contracts/addresses";
 import { getToken, getTokenAddress, KNOWN_PAIRS } from "@/lib/contracts/tokens";
 import { formatTokenAmountFixed, truncateAddress } from "@/lib/format";
@@ -164,7 +165,7 @@ function PositionFetcher({ pair, onUpdate }: PositionFetcherProps) {
         feesEarned0={feesEarned0}
         feesEarned1={feesEarned1}
       />
-      <p className="px-1 text-xs text-muted-foreground">
+      <p className="min-w-0 break-words px-1 text-xs text-muted-foreground">
         Price source: {sourceLabel}
         {priceLabel ? ` · ${priceLabel}` : ""}
       </p>
@@ -180,12 +181,12 @@ function HistoryRow({ entry, chainId }: { entry: HistoryEntry; chainId: number }
 
   return (
     <div className="flex flex-col gap-2 rounded-lg border border-border bg-card p-4 text-sm shadow-sm sm:flex-row sm:items-center sm:justify-between">
-      <div className="flex items-center gap-2">
-        <TypeIcon aria-hidden="true" className="h-4 w-4 text-muted-foreground" />
-        <span className="font-medium">{typeLabel}</span>
-        <span className="text-muted-foreground">{entry.pairLabel}</span>
+      <div className="flex min-w-0 items-center gap-2">
+        <TypeIcon aria-hidden="true" className="h-4 w-4 shrink-0 text-muted-foreground" />
+        <span className="min-w-0 font-medium">{typeLabel}</span>
+        <span className="min-w-0 text-muted-foreground">{entry.pairLabel}</span>
       </div>
-      <div className="text-xs text-muted-foreground">
+      <div className="min-w-0 break-words text-xs text-muted-foreground">
         <span>
           {formatSignedAmount(entry.amount0, tokenDecimals(entry.token0Symbol))} {entry.token0Symbol}
         </span>
@@ -194,19 +195,19 @@ function HistoryRow({ entry, chainId }: { entry: HistoryEntry; chainId: number }
           {formatSignedAmount(entry.amount1, tokenDecimals(entry.token1Symbol))} {entry.token1Symbol}
         </span>
       </div>
-      <div className="flex items-center gap-3 text-xs">
+      <div className="flex min-w-0 items-center gap-3 text-xs">
         <time dateTime={timestamp.toISOString()}>{timestamp.toLocaleString()}</time>
         {explorerUrl ? (
           <a
             href={explorerUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="font-mono text-primary hover:underline"
+            className="min-w-0 break-words font-mono text-primary hover:underline"
           >
             {truncateAddress(entry.txHash)}
           </a>
         ) : (
-          <span className="font-mono">{truncateAddress(entry.txHash)}</span>
+          <span className="min-w-0 break-words font-mono">{truncateAddress(entry.txHash)}</span>
         )}
       </div>
     </div>
@@ -271,13 +272,23 @@ export default function PortfolioPage() {
     );
   }
 
-  if (chainId === null || !isDeploymentConfigured(deployment)) {
+  if (
+    chainId === null ||
+    !isSupportedChain(chainId) ||
+    !isDeploymentConfigured(deployment)
+  ) {
     return (
       <div className="container mx-auto px-4 py-10">
         <h1 className="text-3xl font-bold tracking-tight">Portfolio</h1>
-        <p className="mt-4 text-muted-foreground">
-          No contract deployment configured for this network.
-        </p>
+        {chainId !== null && !isSupportedChain(chainId) ? (
+          <div className="mt-4 max-w-md">
+            <WrongNetworkBanner />
+          </div>
+        ) : (
+          <p className="mt-4 text-muted-foreground">
+            No contract deployment configured for this network.
+          </p>
+        )}
       </div>
     );
   }

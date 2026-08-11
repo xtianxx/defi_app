@@ -1,0 +1,16 @@
+# Slim the upload payload for Vercel builds.
+# Vercel reinstalls deps during build, so node_modules never needs uploading.
+node_modules
+.git
+.gitignore
+
+# Foundry / contracts artifacts not needed by the Next.js frontend build.
+contracts/lib
+contracts/out
+contracts/cache
+contracts/broadcast
+
+# Local / generated.
+.vercel
+*.log
+.DS_Store

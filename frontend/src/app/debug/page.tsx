@@ -30,7 +30,7 @@ export default function DebugPage() {
   const usdcToken = useToken(usdc);
 
   return (
-    <div className="container py-10 font-mono text-sm space-y-6">
+    <div className="container px-4 py-10 font-mono text-sm space-y-6">
       <div>
         <h1 className="text-xl font-bold">Debug — Phase 2 Foundation Check</h1>
         <p className="text-muted-foreground mt-1">
@@ -42,48 +42,48 @@ export default function DebugPage() {
       <section className="space-y-1">
         <h2 className="font-semibold border-b pb-1">Wallet</h2>
         <p>Status: <span className={status === "ready" ? "text-green-600" : status === "error" ? "text-red-600" : ""}>{status}</span></p>
-        <p>Account: {account ? truncateAddress(account) : "—"}</p>
+        <p className="break-all">Account: {account ? truncateAddress(account) : "—"}</p>
         <p>Chain: {chain?.name ?? "—"} ({chainId})</p>
-        {error && <p className="text-red-600">Error: {error.code} — {error.message}</p>}
+        {error && <p className="break-words text-red-600">Error: {error.code} — {error.message}</p>}
       </section>
 
       {/* Deployment config */}
       <section className="space-y-1">
         <h2 className="font-semibold border-b pb-1">Deployment (chain {effectiveChainId})</h2>
-        <p>Factory: {factoryOk ? <span className="text-green-600">✓ deployed</span> : "not deployed"} {deployment?.factory && deployment.factory !== ZERO ? `(${truncateAddress(deployment.factory)})` : ""}</p>
+        <p className="break-all">Factory: {factoryOk ? <span className="text-green-600">✓ deployed</span> : "not deployed"} {deployment?.factory && deployment.factory !== ZERO ? `(${truncateAddress(deployment.factory)})` : ""}</p>
         <p>Router: {routerOk ? <span className="text-green-600">✓ deployed</span> : <span className="text-muted-foreground">pending Phase 3</span>}</p>
-        <p>WETH: {wethOk ? <span className="text-green-600">✓ deployed</span> : "not deployed"} {deployment?.weth && deployment.weth !== ZERO ? `(${truncateAddress(deployment.weth)})` : ""}</p>
+        <p className="break-all">WETH: {wethOk ? <span className="text-green-600">✓ deployed</span> : "not deployed"} {deployment?.weth && deployment.weth !== ZERO ? `(${truncateAddress(deployment.weth)})` : ""}</p>
         {!factoryOk && <p className="text-red-600 text-xs">Run contracts/dev-setup.sh to deploy + sync</p>}
       </section>
 
       {/* Tokens */}
       <section className="space-y-1">
         <h2 className="font-semibold border-b pb-1">Tokens</h2>
-        <p>WETH address: {weth ?? "not set"}</p>
-        <p>WETH balance: {wethToken.balance !== null ? formatTokenAmount(wethToken.balance, 18) : "—"}</p>
-        <p>USDC address: {usdc ?? "not set"}</p>
-        <p>USDC balance: {usdcToken.balance !== null ? formatTokenAmount(usdcToken.balance, 6) : "—"}</p>
+        <p className="break-all">WETH address: {weth ?? "not set"}</p>
+        <p className="break-all">WETH balance: {wethToken.balance !== null ? formatTokenAmount(wethToken.balance, 18) : "—"}</p>
+        <p className="break-all">USDC address: {usdc ?? "not set"}</p>
+        <p className="break-all">USDC balance: {usdcToken.balance !== null ? formatTokenAmount(usdcToken.balance, 6) : "—"}</p>
       </section>
 
       {/* Pair */}
       <section className="space-y-1">
         <h2 className="font-semibold border-b pb-1">WETH/USDC Pair</h2>
-        <p>Pair address: {pair.pairAddress ?? "not deployed"}</p>
+        <p className="break-all">Pair address: {pair.pairAddress ?? "not deployed"}</p>
         {pair.pairAddress && (
           <>
-            <p>token0: {pair.token0}</p>
-            <p>token1: {pair.token1}</p>
+            <p className="break-all">token0: {pair.token0}</p>
+            <p className="break-all">token1: {pair.token1}</p>
             {pair.reserves && (
               <>
-                <p>reserve0: {pair.reserves.reserve0.toString()}</p>
-                <p>reserve1: {pair.reserves.reserve1.toString()}</p>
+                <p className="break-all">reserve0: {pair.reserves.reserve0.toString()}</p>
+                <p className="break-all">reserve1: {pair.reserves.reserve1.toString()}</p>
                 <p>blockTimestampLast: {pair.reserves.blockTimestampLast}</p>
               </>
             )}
-            <p>LP totalSupply: {pair.liquidity?.toString() ?? "—"}</p>
-            <p>My LP balance: {pair.lpBalance?.toString() ?? "—"}</p>
-            <p>price0CumulativeLast: {pair.price0CumulativeLast?.toString() ?? "—"}</p>
-            <p>price1CumulativeLast: {pair.price1CumulativeLast?.toString() ?? "—"}</p>
+            <p className="break-all">LP totalSupply: {pair.liquidity?.toString() ?? "—"}</p>
+            <p className="break-all">My LP balance: {pair.lpBalance?.toString() ?? "—"}</p>
+            <p className="break-all">price0CumulativeLast: {pair.price0CumulativeLast?.toString() ?? "—"}</p>
+            <p className="break-all">price1CumulativeLast: {pair.price1CumulativeLast?.toString() ?? "—"}</p>
           </>
         )}
       </section>

@@ -74,6 +74,30 @@ describe("errors", () => {
       expect(entry.code).toBe("rpc");
     });
 
+    it("decodes ethers INSUFFICIENT_FUNDS as insufficient-funds", () => {
+      const entry = decodeError(
+        new Error(
+          "insufficient funds for intrinsic transaction cost (transaction={...}, code=INSUFFICIENT_FUNDS, version=6.17.0)",
+        ),
+      );
+      expect(entry.code).toBe("insufficient-funds");
+    });
+
+    it("decodes numeric code INSUFFICIENT_FUNDS as insufficient-funds", () => {
+      const entry = decodeError({ code: "INSUFFICIENT_FUNDS", message: "balance 0" });
+      expect(entry.code).toBe("insufficient-funds");
+      expect(entry.hint).toBeDefined();
+    });
+
+    it("decodes RPC insufficient funds message as insufficient-funds", () => {
+      const entry = decodeError(
+        new Error(
+          'RPC 0xaa36a7 Infura eth_sendRawTransaction: insufficient funds for gas * price + value: balance 0, tx cost 530255028052925',
+        ),
+      );
+      expect(entry.code).toBe("insufficient-funds");
+    });
+
     it("decodes gas estimation failure", () => {
       const entry = decodeError(new Error("gas required exceeds allowance"));
       expect(entry.code).toBe("gas-estimation");

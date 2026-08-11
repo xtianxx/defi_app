@@ -18,8 +18,8 @@ export function ConnectButton() {
 
   if (status === "error" && error) {
     return (
-      <div className="flex items-center gap-2 text-sm text-red-600">
-        <span>{error.message}</span>
+      <div className="flex flex-wrap items-center justify-end gap-2 text-sm text-red-600">
+        <span className="min-w-0">{error.message}</span>
         <button
           type="button"
           onClick={() => {
@@ -47,7 +47,7 @@ export function ConnectButton() {
 
   if (account) {
     return (
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center justify-end gap-2">
         {wrongNetwork && (
           <button
             type="button"
@@ -59,10 +59,10 @@ export function ConnectButton() {
             Wrong network — switch
           </button>
         )}
-        <span className="rounded-md bg-secondary px-3 py-1.5 text-sm font-medium">
+        <span className="min-w-0 rounded-md bg-secondary px-3 py-1.5 text-sm font-medium">
           {truncateAddress(account)}
         </span>
-        {chain && <span className="text-xs text-muted-foreground">{chain.name}</span>}
+        {chain && <span className="min-w-0 text-xs text-muted-foreground">{chain.name}</span>}
         <button
           type="button"
           onClick={disconnect}

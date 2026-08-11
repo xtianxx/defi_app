@@ -64,11 +64,11 @@ export function PositionCard({
 
   return (
     <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold tracking-tight">
+      <div className="flex min-w-0 items-center justify-between">
+        <h3 className="min-w-0 text-lg font-semibold tracking-tight">
           {token0Symbol} / {token1Symbol}
         </h3>
-        <span className="text-sm text-muted-foreground">
+        <span className="min-w-0 text-right text-sm text-muted-foreground">
           {formatTokenAmount(lpBalance, 18)} LP
         </span>
       </div>
@@ -86,10 +86,10 @@ export function PositionCard({
         </div>
       </div>
 
-      <div className="mt-3 space-y-1 text-sm">
-        <div className="flex items-center justify-between">
+      <div className="mt-3 min-w-0 space-y-1 text-sm">
+        <div className="flex min-w-0 items-center justify-between">
           <span className="text-muted-foreground">Deposited</span>
-          <span className="text-right">
+          <span className="min-w-0 break-words text-right">
             <span>
               {formatTokenAmountFixed(depositedAmount0, token0Decimals)} {token0Symbol}
             </span>
@@ -99,9 +99,9 @@ export function PositionCard({
             </span>
           </span>
         </div>
-        <div className="flex items-center justify-between">
+        <div className="flex min-w-0 items-center justify-between">
           <span className="text-muted-foreground">Fees earned</span>
-          <span className="text-right">
+          <span className="min-w-0 break-words text-right">
             <span>
               {hasFees0
                 ? `${formatTokenAmountFixed(feesEarned0, token0Decimals)} ${token0Symbol}`
