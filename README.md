@@ -1,12 +1,12 @@
-# Uniswap V2 风格去中心化交易所 — 简历项目
+# Uniswap V2 风格去中心化交易所（DEX）
 
 中文 | [English](README.en.md)
 
 ![CI](https://github.com/xtianxx/defi_app/actions/workflows/test.yml/badge.svg)
 
-一个 Uniswap V2 风格的去中心化交易所（DEX），作为**简历/作品集项目**开发：链上
-AMM 采用恒定乘积定价（`x·y=k`）、0.3% 交易手续费、TWAP 价格预言机，并配有通过
-MetaMask 连接合约的完整 Web dApp。
+一个 Uniswap V2 风格的去中心化交易所（DEX）：链上 AMM 采用恒定乘积定价
+（`x·y=k`）、0.3% 交易手续费、TWAP 价格预言机，并配有通过 MetaMask 连接合约的
+完整 Web dApp。
 
 本仓库是包含两个独立包的 monorepo：
 
@@ -18,7 +18,21 @@ MetaMask 连接合约的完整 Web dApp。
   Playwright。
 
 开发循环部署在本地 `anvil`（chainId 31337，确定性），全程不涉及真实资金；公共演示
-环境部署在 Sepolia 测试网并由 Vercel 托管（见下文"Sepolia 测试网 / Vercel 部署"）。
+环境已部署在 Sepolia 测试网并由 Vercel 托管（见"在线体验"与"Sepolia 测试网 /
+Vercel 部署"）。
+
+## 在线体验
+
+项目已部署上线，无需搭建本地环境即可直接体验：
+
+- **线上前端（Vercel）**：<https://defi-app-three.vercel.app/>
+- **链上合约（Sepolia 测试网）**：Factory、Router02、WETH9、4 个代币与 2 个
+  预置交易对均已部署并通过 Etherscan 验证，页面读取真实链上数据
+- 打开线上地址，将 MetaMask 切换到 Sepolia 网络（chainId `11155111`）即可
+  兑换、添加/移除流动性、查看持仓与手续费；演示账户与余额见
+  [演示指南](specs/002-sepolia-vercel-deploy/demo-guide.md)
+
+> 链上均为测试网代币（faucet 发放，无真实资金），可放心体验。
 
 ## 架构
 
@@ -134,8 +148,10 @@ anvil + 部署 + 同步 + dev-server 流程的替代快速入口（不跑测试�
 
 ## Sepolia 测试网 / Vercel 部署（公共演示）
 
-公共演示环境：合约部署在 **Sepolia 测试网**（chainId 11155111）并在 Etherscan 上验证，
-前端由 **Vercel** 公开托管。面试演示脚本、演示账户与已部署地址见
+公共演示环境**已上线**：合约部署在 **Sepolia 测试网**（chainId 11155111）并在
+Etherscan 上验证，前端由 **Vercel** 公开托管，可通过
+<https://defi-app-three.vercel.app/> 在线访问（连接 Sepolia 网络即可开始体验）。
+演示脚本、演示账户与已部署地址见
 [specs/002-sepolia-vercel-deploy/demo-guide.md](specs/002-sepolia-vercel-deploy/demo-guide.md)；
 完整验证场景（公开访问、演示账户、应用内 faucet、本地回归、可复现性）见
 [specs/002-sepolia-vercel-deploy/quickstart.md](specs/002-sepolia-vercel-deploy/quickstart.md)。
@@ -175,8 +191,8 @@ git add frontend/src/lib/contracts/addresses.ts frontend/src/lib/contracts/token
 ```
 
 部署完成后：步骤 3 的所有合约地址均可在 `sepolia.etherscan.io` 上查看已验证源码；
-全新浏览器打开 Vercel URL，连接 MetaMask（已添加 Sepolia 网络）即可
-加载真实链上余额与价格。
+全新浏览器打开线上地址 <https://defi-app-three.vercel.app/>，连接 MetaMask
+（已添加 Sepolia 网络）即可加载真实链上余额与价格。
 
 `./scripts/sepolia-deploy.sh`（无子命令）可一条命令完成部署全程：preflight 检查
 （`contracts/.env`、工具链、master 余额）→ `forge build` → 对线上 Sepolia 的

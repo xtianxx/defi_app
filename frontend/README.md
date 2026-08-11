@@ -36,8 +36,8 @@ deployer key `0xac0974…ff80` (see `../scripts/dev-deploy.sh`).
 
 ## Sepolia / Vercel deployment
 
-The public demo deploys the contracts on Sepolia (chainId 11155111) and hosts this
-frontend on Vercel:
+The public demo is **live**: contracts are deployed on Sepolia (chainId 11155111) and
+this frontend is hosted on Vercel at <https://defi-app-three.vercel.app/>:
 
 - **Vercel Root Directory: `frontend/`** — import the repo, set the env var
   `SEPOLIA_RPC_URL` for Production + Preview (framework auto-detected: Next.js).

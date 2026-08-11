@@ -1,12 +1,12 @@
-# Uniswap V2–Style DEX — Resume Project
+# Uniswap V2–Style DEX
 
 [中文版](README.md) | English
 
 ![CI](https://github.com/xtianxx/defi_app/actions/workflows/test.yml/badge.svg)
 
-A Uniswap V2–style decentralized exchange (DEX) built as a resume/portfolio project: an
-on-chain AMM with constant-product pricing (`x·y=k`), a 0.3% swap fee, TWAP price oracles,
-and a full web dApp that connects to it via MetaMask.
+A Uniswap V2–style decentralized exchange (DEX): an on-chain AMM with constant-product
+pricing (`x·y=k`), a 0.3% swap fee, TWAP price oracles, and a full web dApp that connects
+to it via MetaMask.
 
 The repository is a two-package monorepo:
 
@@ -18,8 +18,22 @@ The repository is a two-package monorepo:
   shadcn/ui, Vitest + Playwright.
 
 The dev loop deploys to local `anvil` (chainId 31337, deterministic). No real
-value is ever at risk; the public demo runs on the Sepolia testnet and is hosted
-on Vercel (see "Sepolia Testnet / Vercel Deployment" below).
+value is ever at risk; the public demo is deployed on the Sepolia testnet and
+hosted on Vercel (see "Try it online" and "Sepolia Testnet / Vercel Deployment"
+below).
+
+## Try it online
+
+The project is deployed and live — no local setup needed:
+
+- **Frontend (Vercel)**: <https://defi-app-three.vercel.app/>
+- **Contracts (Sepolia testnet)**: Factory, Router02, WETH9, the 4 tokens and 2 seeded
+  pairs are all deployed and verified on Etherscan, serving live on-chain data
+- Open the URL and switch MetaMask to Sepolia (chainId `11155111`) to swap, add/remove
+  liquidity, and view portfolio positions and fees; demo accounts and balances are in
+  the [demo guide](specs/002-sepolia-vercel-deploy/demo-guide.md)
+
+> Everything on-chain is testnet (faucet/mock) tokens — no real value at risk.
 
 ## Architecture
 
@@ -141,9 +155,10 @@ flow, without running any tests.
 
 ## Sepolia Testnet / Vercel Deployment (public demo)
 
-The public demo environment: contracts deployed on the **Sepolia testnet** (chainId
-11155111) and verified on Etherscan, frontend publicly hosted on **Vercel**. The
-interview demo script, demo accounts and deployed addresses live in
+The public demo environment is **live**: contracts deployed on the **Sepolia testnet**
+(chainId 11155111) and verified on Etherscan, frontend publicly hosted on **Vercel** at
+<https://defi-app-three.vercel.app/> (connect to Sepolia and start trading). The demo
+script, demo accounts and deployed addresses live in
 [specs/002-sepolia-vercel-deploy/demo-guide.md](specs/002-sepolia-vercel-deploy/demo-guide.md);
 the full validation scenarios (public access, demo accounts, in-app faucet, local
 regression, reproducibility) are in
@@ -184,8 +199,8 @@ git add frontend/src/lib/contracts/addresses.ts frontend/src/lib/contracts/token
 ```
 
 After deployment: every contract address from step 3 shows verified source code on
-`sepolia.etherscan.io`; a fresh browser at the Vercel URL connects via
-MetaMask (Sepolia network added) and loads live on-chain balances and prices.
+`sepolia.etherscan.io`; a fresh browser at <https://defi-app-three.vercel.app/> connects
+via MetaMask (Sepolia network added) and loads live on-chain balances and prices.
 
 `./scripts/sepolia-deploy.sh` (no subcommand) runs the whole deployment in one
 shot: preflight (`contracts/.env`, toolchain, master balance) → `forge build` →
