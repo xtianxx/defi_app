@@ -12,7 +12,7 @@ The repository is a two-package monorepo:
 
 - **`contracts/`** — Foundry project re-implementing Uniswap V2 core (`Factory`, `Pair`, LP
   `ERC20`) and a simplified periphery (`Router02`, `WETH9`, `UniswapV2Library`,
-  `TransferHelper`), excluding flash swaps and multi-hop routing (FR-011).
+  `TransferHelper`), excluding flash swaps and multi-hop routing.
 - **`frontend/`** — Next.js 15 (App Router) dApp: swap, add/remove liquidity, and a
   portfolio view backed by on-chain TWAP-only prices. ethers v6, React 19, Tailwind +
   shadcn/ui, Vitest + Playwright.
@@ -39,8 +39,8 @@ on Vercel (see "Sepolia Testnet / Vercel Deployment" below).
                 │ out/ ABIs                     │ broadcast/ addresses
                 ▼                               ▼
 ┌──────────────────────────────────────────────────────────────────────────┐
-│ frontend/scripts/sync-deploy.ts   (node scripts/sync-deploy.ts <json> <id>)│
-│   regenerates src/lib/contracts/{addresses,abis,tokens}.ts                │
+│ frontend/scripts/sync-deploy.ts   (argless; chainIds hardcoded in script)   │
+│   regenerates src/lib/contracts/{addresses,tokens}.ts                     │
 └───────────────────────────────────┬──────────────────────────────────────┘
                                     ▼
 ┌──────────────────────────────────────────────────────────────────────────┐
@@ -53,8 +53,8 @@ on Vercel (see "Sepolia Testnet / Vercel Deployment" below).
 
 The two packages are coupled only through generated artifacts: ABI exports from
 `contracts/out/` and per-chain deployed addresses from `broadcast/` run files. There is no
-root workspace tool — the packages are independent (see `AGENTS.md` for the full
-structure).
+root workspace tool — the packages are independent (see the `specs/` design docs for the
+full structure).
 
 ## Prerequisites
 
@@ -84,17 +84,17 @@ forge script script/DeployDemo.s.sol:DeployDemo \
 
 # A.3 — sync deployed addresses + ABIs into the frontend
 cd ../frontend
-node scripts/sync-deploy.ts ../contracts/broadcast/31337/run-latest.json 31337
+npm run sync-deploy
 
 # A.4 — run the frontend
 npm install
 npm run dev                                     # http://localhost:3000
 
-# A.5 — browser validation (manual, SC-001)
+# A.5 — browser validation (manual)
 #   Connect MetaMask to anvil (chainId 31337, RPC http://127.0.0.1:8545),
 #   swap WETH → USDC on /swap, approve + confirm, check the empty
 #   USDC/DAI pool edge case, add liquidity on /liquidity, and verify
-#   positions + fees on /portfolio (SC-004, < 3 s).
+#   positions + fees on /portfolio.
 
 # A.6 — automated validation (CI parity)
 cd ../contracts
@@ -141,26 +141,24 @@ flow, without running any tests.
 
 ## Sepolia Testnet / Vercel Deployment (public demo)
 
-The public demo environment (feature 002): contracts deployed on the **Sepolia
-testnet** (chainId 11155111) and verified on Etherscan, frontend publicly hosted
-on **Vercel** (FR-010/FR-013). The interview demo script, demo accounts and
-deployed addresses live in
+The public demo environment: contracts deployed on the **Sepolia testnet** (chainId
+11155111) and verified on Etherscan, frontend publicly hosted on **Vercel**. The
+interview demo script, demo accounts and deployed addresses live in
 [specs/002-sepolia-vercel-deploy/demo-guide.md](specs/002-sepolia-vercel-deploy/demo-guide.md);
-the full validation scenarios (VS-1..VS-5: public access, demo accounts, in-app
-faucet, local regression, reproducibility) are in
+the full validation scenarios (public access, demo accounts, in-app faucet, local
+regression, reproducibility) are in
 [specs/002-sepolia-vercel-deploy/quickstart.md](specs/002-sepolia-vercel-deploy/quickstart.md).
 
-The whole deployment can be reproduced in **≤ 30 minutes** with the 6 steps below
-(FR-010/SC-005):
+The whole deployment can be reproduced in **≤ 30 minutes** with the 6 steps below:
 
 | # | Step | Time budget |
 |---|---|---|
-| 1 | Generate 3 fresh demo-account keys (master / LP provider / swapper): `cast wallet new`, record the addresses (never reuse anvil's well-known keys — plan D5) | ~3 min |
-| 2 | Fund the master via public Sepolia faucets (0.25–0.5 ETH; faucet ladder in research.md R0.1) | ~5 min |
+| 1 | Generate 3 fresh demo-account keys (master / LP provider / swapper): `cast wallet new`, record the addresses (never reuse anvil's well-known keys) | ~3 min |
+| 2 | Fund the master via public Sepolia faucets (0.25–0.5 ETH; faucet ladder in research.md) | ~5 min |
 | 3 | One-shot deploy + seed + verify: `forge script script/DeployDemoSepolia.s.sol --broadcast --verify --slow` (with `SEPOLIA_RPC_URL` / `ETHERSCAN_API_KEY` exported) | ~10 min |
-| 4 | Regenerate and commit frontend bindings: `node frontend/scripts/sync-deploy.ts` (argless, multi-chain) → `git add` + commit | ~2 min |
+| 4 | Regenerate and commit frontend bindings: `npm run sync-deploy` (argless, multi-chain) → `git add` + commit | ~2 min |
 | 5 | Import the repo on Vercel: Root Directory = `frontend/`, env var `SEPOLIA_RPC_URL` (Production + Preview) | ~5 min |
-| 6 | Replenish demo accounts (FR-005 primary path): `./scripts/sepolia-deploy.sh fund-demo-accounts` | ~5 min |
+| 6 | Replenish demo accounts (primary path): `./scripts/sepolia-deploy.sh fund-demo-accounts` | ~5 min |
 
 Total: ~30 minutes.
 
@@ -168,25 +166,25 @@ Total: ~30 minutes.
 # 1. Generate demo-account keys (× 3)
 cast wallet new
 
-# 2. Fund master via public Sepolia faucets (ladder in research.md R0.1)
+# 2. Fund master via public Sepolia faucets (ladder in research.md)
 
-# 3. One-shot deploy + seed + Etherscan verification (from contracts/; --verify auto-decodes constructor args — R0.3)
+# 3. One-shot deploy + seed + Etherscan verification (from contracts/; --verify auto-decodes constructor args)
 export SEPOLIA_RPC_URL=... ETHERSCAN_API_KEY=...
 forge script script/DeployDemoSepolia.s.sol --rpc-url "$SEPOLIA_RPC_URL" --broadcast \
   --verify --etherscan-api-key "$ETHERSCAN_API_KEY" --slow -vvv
 
 # 4. Regenerate frontend bindings (argless, multi-chain) and commit
-node frontend/scripts/sync-deploy.ts
+cd ../frontend && npm run sync-deploy
 git add frontend/src/lib/contracts/addresses.ts frontend/src/lib/contracts/tokens.ts && git commit
 
 # 5. Vercel: import repo → Root Directory: frontend/ → env SEPOLIA_RPC_URL (Production + Preview) → Deploy
 
-# 6. Replenish demo accounts (primary path, FR-005)
+# 6. Replenish demo accounts (primary path)
 ./scripts/sepolia-deploy.sh fund-demo-accounts
 ```
 
 After deployment: every contract address from step 3 shows verified source code on
-`sepolia.etherscan.io` (SC-002); a fresh browser at the Vercel URL connects via
+`sepolia.etherscan.io`; a fresh browser at the Vercel URL connects via
 MetaMask (Sepolia network added) and loads live on-chain balances and prices.
 
 `./scripts/sepolia-deploy.sh` (no subcommand) runs the whole deployment in one
@@ -200,7 +198,7 @@ verification status.
 | Variable | Purpose | Notes |
 |---|---|---|
 | `SEPOLIA_RPC_URL` | Sepolia RPC endpoint (Alchemy/Infura free tier) | Used by forge for deploys; read server-side by the frontend `/api/reserves` route (`createServerProvider()`) — **server-only, never prefix with `NEXT_PUBLIC_`**; configure on Vercel for Production + Preview |
-| `ETHERSCAN_API_KEY` | Free Etherscan API key | Used by `--verify` for contract verification (R0.3) |
+| `ETHERSCAN_API_KEY` | Free Etherscan API key | Used by `--verify` for contract verification |
 | `SEPOLIA_DEPLOYER_KEY` | Master deployer private key | Deployer + funding source; **never documented anywhere** (demo-guide.md only records demo-account addresses) |
 
 All live in the **gitignored** `contracts/.env` (template: `contracts/.env.example`),
@@ -223,10 +221,10 @@ Deploy scripts: `contracts/script/DeployDemo.s.sol` (main demo),
 **Contracts** (from `contracts/`):
 
 ```bash
-forge fmt --check        # formatting (Constitution IV)
+forge fmt --check        # formatting
 forge build --sizes      # Router02 must stay under the 24 KB EIP-170 limit
 forge test -vvv          # all tests green
-forge test --coverage    # ≥ 95% line coverage (Constitution III)
+forge test --coverage    # ≥ 95% line coverage
 forge snapshot           # gas baseline; CI diffs with --check
 ```
 
@@ -266,7 +264,7 @@ specs/          Authoritative feature docs (spec, plan, tasks, quickstart)
 .github/        CI workflows (test.yml)
 ```
 
-See `AGENTS.md` for the full structure, conventions, and gotchas.
+See the `specs/` design docs for the full structure, conventions, and gotchas.
 
 ## License
 

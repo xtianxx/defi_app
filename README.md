@@ -12,7 +12,7 @@ MetaMask 连接合约的完整 Web dApp。
 
 - **`contracts/`** — Foundry 项目，重新实现了 Uniswap V2 核心（`Factory`、`Pair`、
   LP `ERC20`）和简化版外围（`Router02`、`WETH9`、`UniswapV2Library`、
-  `TransferHelper`），不含闪电兑换和多跳路由（FR-011）。
+  `TransferHelper`），不含闪电兑换和多跳路由。
 - **`frontend/`** — Next.js 15（App Router）dApp：兑换、添加/移除流动性，以及基于
   链上 TWAP 价格的持仓视图。ethers v6、React 19、Tailwind + shadcn/ui、Vitest +
   Playwright。
@@ -38,8 +38,8 @@ MetaMask 连接合约的完整 Web dApp。
                 │ out/ ABIs                     │ broadcast/ addresses
                 ▼                               ▼
 ┌──────────────────────────────────────────────────────────────────────────┐
-│ frontend/scripts/sync-deploy.ts   (node scripts/sync-deploy.ts <json> <id>)│
-│   regenerates src/lib/contracts/{addresses,abis,tokens}.ts                │
+│ frontend/scripts/sync-deploy.ts   (argless; chainIds hardcoded in script)   │
+│   regenerates src/lib/contracts/{addresses,tokens}.ts                     │
 └───────────────────────────────────┬──────────────────────────────────────┘
                                     ▼
 ┌──────────────────────────────────────────────────────────────────────────┐
@@ -52,7 +52,7 @@ MetaMask 连接合约的完整 Web dApp。
 
 两个包仅通过生成产物耦合：`contracts/out/` 导出的 ABI，以及 `broadcast/` 运行文件
 中的各链部署地址。没有根级 workspace 工具——两个包相互独立（完整结构见
-`AGENTS.md`）。
+`specs/` 目录下的设计文档）。
 
 ## 环境要求
 
@@ -82,16 +82,16 @@ forge script script/DeployDemo.s.sol:DeployDemo \
 
 # A.3 — 将部署地址 + ABI 同步到前端
 cd ../frontend
-node scripts/sync-deploy.ts ../contracts/broadcast/31337/run-latest.json 31337
+npm run sync-deploy
 
 # A.4 — 启动前端
 npm install
 npm run dev                                     # http://localhost:3000
 
-# A.5 — 浏览器验证（手动，SC-001）
+# A.5 — 浏览器验证（手动）
 #   将 MetaMask 连接到 anvil（chainId 31337，RPC http://127.0.0.1:8545），
 #   在 /swap 用 WETH 兑换 USDC，approve 并确认；检查 USDC/DAI 空池边界
-#   情况；在 /liquidity 添加流动性；在 /portfolio 验证持仓与手续费（SC-004，< 3 秒）。
+#   情况；在 /liquidity 添加流动性；在 /portfolio 验证持仓与手续费。
 
 # A.6 — 自动化验证（与 CI 一致）
 cd ../contracts
@@ -134,22 +134,22 @@ anvil + 部署 + 同步 + dev-server 流程的替代快速入口（不跑测试�
 
 ## Sepolia 测试网 / Vercel 部署（公共演示）
 
-公共演示环境（feature 002）：合约部署在 **Sepolia 测试网**（chainId 11155111）并
-在 Etherscan 上验证，前端由 **Vercel** 公开托管（FR-010/FR-013）。面试演示脚本、
-演示账户与已部署地址见 [specs/002-sepolia-vercel-deploy/demo-guide.md](specs/002-sepolia-vercel-deploy/demo-guide.md)；
-完整验证场景（VS-1..VS-5：公开访问、演示账户、应用内 faucet、本地回归、可复现性）
-见 [specs/002-sepolia-vercel-deploy/quickstart.md](specs/002-sepolia-vercel-deploy/quickstart.md)。
+公共演示环境：合约部署在 **Sepolia 测试网**（chainId 11155111）并在 Etherscan 上验证，
+前端由 **Vercel** 公开托管。面试演示脚本、演示账户与已部署地址见
+[specs/002-sepolia-vercel-deploy/demo-guide.md](specs/002-sepolia-vercel-deploy/demo-guide.md)；
+完整验证场景（公开访问、演示账户、应用内 faucet、本地回归、可复现性）见
+[specs/002-sepolia-vercel-deploy/quickstart.md](specs/002-sepolia-vercel-deploy/quickstart.md)。
 
-按以下 6 步可在 **≤ 30 分钟**内完整复现整个部署（FR-010/SC-005）：
+按以下 6 步可在 **≤ 30 分钟**内完整复现整个部署：
 
 | # | 步骤 | 时间预算 |
 |---|---|---|
-| 1 | 生成 3 个全新演示账户密钥（master / LP provider / swapper）：`cast wallet new`，记录地址（绝不复用 anvil 公开密钥 — plan D5） | ~3 min |
-| 2 | 通过公共 Sepolia faucet 给 master 注资（0.25–0.5 ETH；faucet 阶梯见 research.md R0.1） | ~5 min |
+| 1 | 生成 3 个全新演示账户密钥（master / LP provider / swapper）：`cast wallet new`，记录地址（不复用 anvil 的公开已知密钥） | ~3 min |
+| 2 | 通过公共 Sepolia faucet 给 master 注资（0.25–0.5 ETH；faucet 阶梯见 research.md） | ~5 min |
 | 3 | 一键部署 + 播种 + 验证：`forge script script/DeployDemoSepolia.s.sol --broadcast --verify --slow`（先导出 `SEPOLIA_RPC_URL` / `ETHERSCAN_API_KEY`） | ~10 min |
-| 4 | 重新生成前端绑定并提交：`node frontend/scripts/sync-deploy.ts`（无参数、多链）→ `git add` + commit | ~2 min |
+| 4 | 重新生成前端绑定并提交：`npm run sync-deploy`（无参数、多链）→ `git add` + commit | ~2 min |
 | 5 | Vercel 导入仓库：Root Directory = `frontend/`，环境变量 `SEPOLIA_RPC_URL`（Production + Preview） | ~5 min |
-| 6 | 演示账户补款（FR-005 主路径）：`./scripts/sepolia-deploy.sh fund-demo-accounts` | ~5 min |
+| 6 | 演示账户补款（主路径）：`./scripts/sepolia-deploy.sh fund-demo-accounts` | ~5 min |
 
 合计约 30 分钟。
 
@@ -157,25 +157,25 @@ anvil + 部署 + 同步 + dev-server 流程的替代快速入口（不跑测试�
 # 1. 生成演示账户密钥（× 3）
 cast wallet new
 
-# 2. 用公共 Sepolia faucet 给 master 注资（阶梯见 research.md R0.1）
+# 2. 用公共 Sepolia faucet 给 master 注资（阶梯见 research.md）
 
-# 3. 一键部署 + 播种 + Etherscan 验证（在 contracts/ 下；--verify 自动解码构造参数 — R0.3）
+# 3. 一键部署 + 播种 + Etherscan 验证（在 contracts/ 下；--verify 自动解码构造参数）
 export SEPOLIA_RPC_URL=... ETHERSCAN_API_KEY=...
 forge script script/DeployDemoSepolia.s.sol --rpc-url "$SEPOLIA_RPC_URL" --broadcast \
   --verify --etherscan-api-key "$ETHERSCAN_API_KEY" --slow -vvv
 
 # 4. 重新生成前端绑定（无参数、多链）并提交
-node frontend/scripts/sync-deploy.ts
+cd ../frontend && npm run sync-deploy
 git add frontend/src/lib/contracts/addresses.ts frontend/src/lib/contracts/tokens.ts && git commit
 
 # 5. Vercel：导入仓库 → Root Directory: frontend/ → env SEPOLIA_RPC_URL (Production + Preview) → Deploy
 
-# 6. 演示账户补款（主路径，FR-005）
+# 6. 演示账户补款（主路径）
 ./scripts/sepolia-deploy.sh fund-demo-accounts
 ```
 
-部署完成后：步骤 3 的所有合约地址均可在 `sepolia.etherscan.io` 上查看已验证源码
-（SC-002）；全新浏览器打开 Vercel URL，连接 MetaMask（已添加 Sepolia 网络）即可
+部署完成后：步骤 3 的所有合约地址均可在 `sepolia.etherscan.io` 上查看已验证源码；
+全新浏览器打开 Vercel URL，连接 MetaMask（已添加 Sepolia 网络）即可
 加载真实链上余额与价格。
 
 `./scripts/sepolia-deploy.sh`（无子命令）可一条命令完成部署全程：preflight 检查
@@ -188,7 +188,7 @@ dry-run 模拟（不广播）→ `--broadcast --verify --slow` → `sync-deploy.
 | 变量 | 用途 | 说明 |
 |---|---|---|
 | `SEPOLIA_RPC_URL` | Sepolia RPC 端点（Alchemy/Infura 免费档） | 部署时供 forge 使用；前端 `/api/reserves` 服务端读取（`createServerProvider()`）—— **仅服务端使用，绝不能加 `NEXT_PUBLIC_` 前缀**；Vercel 上需在 Production + Preview 中配置 |
-| `ETHERSCAN_API_KEY` | 免费 Etherscan API key | 供 `--verify` 验证合约源码（R0.3） |
+| `ETHERSCAN_API_KEY` | 免费 Etherscan API key | 供 `--verify` 验证合约源码 |
 | `SEPOLIA_DEPLOYER_KEY` | master 部署账户私钥 | 部署者 + 打款源；**永不记录在任何文档**（demo-guide.md 只记录演示账户地址） |
 
 全部存放在 **gitignored** 的 `contracts/.env`（模板见 `contracts/.env.example`），
@@ -200,8 +200,8 @@ dry-run 模拟（不广播）→ `--broadcast --verify --slow` → `sync-deploy.
 部署地址由 `scripts/sync-deploy.ts` 生成到
 `frontend/src/lib/contracts/addresses.ts`，为按链组织的 `DEPLOYMENTS` 记录
 （anvil 31337 + Sepolia 11155111），数据来自部署脚本的 Foundry `broadcast/` run-latest JSON。任何
-重新部署后请重新运行 `sync-deploy.ts` —— `broadcast/` 已被 gitignore，生成文件
-是纳入版本管理的。
+重新部署后请重新运行 `npm run sync-deploy`（在 `frontend/` 下）—— `broadcast/` 已被 gitignore，
+生成文件是纳入版本管理的。
 
 部署脚本：`contracts/script/DeployDemo.s.sol`（主演示）、
 `contracts/script/core/DeployFactory.s.sol`、`contracts/script/router/DeployRouter.s.sol`。
@@ -211,10 +211,10 @@ dry-run 模拟（不广播）→ `--broadcast --verify --slow` → `sync-deploy.
 **合约**（在 `contracts/` 下）：
 
 ```bash
-forge fmt --check        # 格式检查（宪法 IV）
+forge fmt --check        # 格式检查
 forge build --sizes      # Router02 必须低于 EIP-170 的 24 KB 上限
 forge test -vvv          # 全部测试通过
-forge test --coverage    # ≥ 95% 行覆盖率（宪法 III）
+forge test --coverage    # ≥ 95% 行覆盖率
 forge snapshot           # gas 基线；CI 用 --check 对比
 ```
 
@@ -254,7 +254,7 @@ specs/          权威功能文档（spec、plan、tasks、quickstart）
 .github/        CI 工作流（test.yml）
 ```
 
-完整结构、约定与注意事项见 `AGENTS.md`。
+完整结构、约定与注意事项见 `specs/` 目录下的设计文档。
 
 ## 许可证
 

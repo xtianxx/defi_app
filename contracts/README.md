@@ -32,7 +32,7 @@ forge script script/DeployDemo.s.sol:DeployDemo \
 Then sync the deployed addresses + ABIs into the frontend:
 
 ```shell
-node ../frontend/scripts/sync-deploy.ts ../contracts/broadcast/31337/run-latest.json 31337
+cd ../frontend && npm run sync-deploy
 ```
 
 For the full local loop (fresh anvil → deploy → sync → tests), run
