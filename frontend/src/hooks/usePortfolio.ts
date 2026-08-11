@@ -61,6 +61,16 @@ interface BurnEventArgs {
 const PAGE_SIZE = 10;
 
 /**
+ * eth_getLogs block-range guard. Sepolia RPC providers (Alchemy/Infura) reject
+ * a single log query spanning more than ~10,000 blocks with
+ * "range <n> exceeds limit of 10000". We must never issue a Swap/Mint/Burn
+ * query from block 0 to latest on a high-block network. Queries are instead
+ * anchored at each pair's creation block (see getPairCreationBlock) with a
+ * bounded recent-window fallback.
+ */
+const LOG_QUERY_WINDOW_BLOCKS = 9000; // comfortably under the 10k RPC limit; wide enough to reach the Sepolia demo pair creation block (~6000 blocks ago)
+
+/**
  * Query Swap/Mint/Burn logs for one pair and reduce them to HistoryEntry[].
  *
  * - Swap: indexed `to` filter → the user is the recipient of a swap they
@@ -76,6 +86,38 @@ const PAGE_SIZE = 10;
  *
  * Spec: tasks.md T064, data-model.md §"Liquidity events" (US4).
  */
+/**
+ * Resolve the block at which `pairAddress` was created by scanning the
+ * factory's PairCreated logs. Bounded to the most recent LOG_QUERY_WINDOW_BLOCKS
+ * so the eth_getLogs range stays under the RPC limit on high-block networks
+ * like Sepolia. For a freshly-deployed DEX the pair is created inside the
+ * window; returns null when not found so callers can fall back to the window
+ * itself.
+ */
+async function getPairCreationBlock(
+  factory: Contract,
+  pairAddress: `0x${string}`,
+  latestBlock: number,
+): Promise<number | null> {
+  const fromBlock = Math.max(0, latestBlock - LOG_QUERY_WINDOW_BLOCKS);
+  // `pair` is NOT indexed on PairCreated (only token0/token1 are), so ethers v6
+  // rejects passing it as a filter arg ("cannot filter non-indexed parameters").
+  // Query all creation events in the window and match the pair address
+  // client-side instead.
+  const logs = (await factory.queryFilter(
+    factory.filters.PairCreated(),
+    fromBlock,
+    latestBlock,
+  )) as EventLog[];
+  const target = pairAddress.toLowerCase();
+  // Newest first — return the latest creation block for this pair.
+  for (let i = logs.length - 1; i >= 0; i--) {
+    const pair = logs[i].args?.pair as `0x${string}` | undefined;
+    if (pair && pair.toLowerCase() === target) return logs[i].blockNumber;
+  }
+  return null;
+}
+
 async function fetchPairHistory(
   pair: Contract,
   pairAddress: `0x${string}`,
@@ -84,6 +126,7 @@ async function fetchPairHistory(
   tokenA: `0x${string}`,
   tokenB: `0x${string}`,
   account: `0x${string}`,
+  fromBlock: number,
 ): Promise<HistoryEntry[]> {
   // ethers v6: filters.<Event>(...) positional args map to ALL parameters in
   // ABI declaration order (not just indexed ones); non-indexed slots MUST be
@@ -92,9 +135,9 @@ async function fetchPairHistory(
   // on `to` (recipient). Burn(address indexed sender, uint amount0, uint
   // amount1, address indexed to) → 4 slots, filter on `to`.
   const [swapLogs, burnLogs, mintLogs] = await Promise.all([
-    pair.queryFilter(pair.filters.Swap(null, null, null, null, null, account), 0, "latest") as Promise<EventLog[]>,
-    pair.queryFilter(pair.filters.Burn(null, null, null, account), 0, "latest") as Promise<EventLog[]>,
-    pair.queryFilter(pair.filters.Mint(), 0, "latest") as Promise<EventLog[]>,
+    pair.queryFilter(pair.filters.Swap(null, null, null, null, null, account), fromBlock, "latest") as Promise<EventLog[]>,
+    pair.queryFilter(pair.filters.Burn(null, null, null, account), fromBlock, "latest") as Promise<EventLog[]>,
+    pair.queryFilter(pair.filters.Mint(), fromBlock, "latest") as Promise<EventLog[]>,
   ]);
 
   // The pair orders token0 < token1 (CREATE2 sorting); resolve the symbols by
@@ -206,6 +249,7 @@ export function usePortfolio(): UsePortfolioResult {
     setError(null);
     try {
       const factory = new Contract(deployment.factory, IUniswapV2Factory_ABI, provider);
+      const latestBlock = await provider.getBlockNumber();
       const entries: HistoryEntry[] = [];
       for (const [symbolA, symbolB] of KNOWN_PAIRS) {
         const tokenA = getTokenAddress(symbolA, chainId);
@@ -214,7 +258,12 @@ export function usePortfolio(): UsePortfolioResult {
         const pairAddress = (await factory.getPair(tokenA, tokenB)) as `0x${string}`;
         if (pairAddress === ZeroAddress) continue; // no pool for this pair
         const pair = new Contract(pairAddress, IUniswapV2Pair_ABI, provider);
-        entries.push(...(await fetchPairHistory(pair, pairAddress, symbolA, symbolB, tokenA, tokenB, account)));
+        // Anchor the log query at the pair's creation block when we can find
+        // it; otherwise fall back to a bounded recent window. This keeps every
+        // eth_getLogs range under the RPC limit on high-block networks.
+        const creationBlock = await getPairCreationBlock(factory, pairAddress, latestBlock);
+        const fromBlock = creationBlock ?? Math.max(0, latestBlock - LOG_QUERY_WINDOW_BLOCKS);
+        entries.push(...(await fetchPairHistory(pair, pairAddress, symbolA, symbolB, tokenA, tokenB, account, fromBlock)));
       }
       // Newest first (SC-003: history ordering by blockTimestamp).
       entries.sort((a, b) => b.timestamp - a.timestamp);
