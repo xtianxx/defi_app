@@ -6,6 +6,7 @@ import { useFaucet } from "@/hooks/useFaucet";
 import { useWeb3Context } from "@/providers/Web3Context";
 import { ConnectButton } from "@/components/wallet/ConnectButton";
 import { getBlockExplorerTxUrl, isSupportedChain } from "@/lib/chains";
+import { DEMO_ACCOUNTS } from "@/lib/demoAccounts";
 import type { Deployment } from "@/lib/contracts/addresses";
 
 interface FaucetWidgetProps {
@@ -178,6 +179,38 @@ export function FaucetWidget({ deployment }: FaucetWidgetProps) {
             faucet.error && (
               <div className="mt-3 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
                 <p className="font-medium">{faucet.error.message}</p>
+                {faucet.error.code === "insufficient-funds" ? (
+                  <div className="mt-2 space-y-3">
+                    <p className="text-destructive/80">
+                      水龙头只发放代币，不发 ETH。请导入下方演示账户（已含 gas ETH）继续演示：
+                    </p>
+                    {DEMO_ACCOUNTS.map((acc) => (
+                      <div
+                        key={acc.label}
+                        className="rounded-md border border-destructive/20 bg-background/60 p-2.5 text-xs"
+                      >
+                        <p className="font-semibold text-destructive">{acc.label}</p>
+                        <p className="mt-1 break-all text-destructive/80">
+                          <span className="font-medium">地址: </span>
+                          {acc.address}
+                        </p>
+                        <p className="mt-0.5 break-all text-destructive/80">
+                          <span className="font-medium">私钥: </span>
+                          {acc.privateKey}
+                        </p>
+                      </div>
+                    ))}
+                    <p className="text-xs text-destructive/70">
+                      MetaMask: 添加账户 → 导入账户 → 粘贴私钥。测试网私钥无真实价值。
+                    </p>
+                  </div>
+                ) : (
+                  (faucet.error as { hint?: string } | null)?.hint && (
+                    <p className="mt-1 text-destructive/80">
+                      {(faucet.error as { hint?: string } | null)?.hint}
+                    </p>
+                  )
+                )}
               </div>
             )}
 
