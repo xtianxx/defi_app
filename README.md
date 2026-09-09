@@ -1,4 +1,4 @@
-# Uniswap V2-style AMM DEX built from scratch
+# Uniswap V2-style AMM DEX (re-implemented, not forked)
 
 中文 | [English](README.en.md)
 
@@ -23,22 +23,21 @@ Sepolia Live Demo · Verified Contracts · CI · E2E
 
 ## 概览 Overview
 
-**从零重新实现**（而非 import / fork）Uniswap V2 式
-恒定乘积 AMM：`Factory` / `Pair` / LP `ERC20` /
-`Router02` / `WETH9` 全部手写，含恒定乘积 invariant、
-0.3% 手续费编码、LP 会计、TWAP 累加器、`MINIMUM_LIQUIDITY`、
+重新实现（而非 import / fork）Uniswap V2 式恒定乘积 AMM：
+核心逻辑自包含、归本项目所有，可按需修改与演进，无需跟随
+上游——`Factory` / `Pair` / LP `ERC20` / `Router02` /
+`WETH9` 均为自有实现，含恒定乘积 invariant、0.3% 手续费
+编码、LP 会计、TWAP 累加器、`MINIMUM_LIQUIDITY`、
 reentrancy lock。
 
-- **从零实现 Uniswap V2 核心**：`contracts/`（Foundry，
-  Solidity ^0.8.19）手写 `Factory`、`Pair`、LP `ERC20`，
-  及子集外围 `Router02`、`WETH9`、`UniswapV2Library`、
-  `TransferHelper`。
-- **完整 DEX 闭环**：`frontend/`（Next.js 15 App Router +
-  ethers v6）支持 Swap、Add/Remove Liquidity、基于链上 TWAP
-  的 Portfolio 持仓视图，MetaMask 直连。
-- **公共 Demo 已上线**：Sepolia 合约已验证 + Vercel 前端，
-  测试币即可体验兑换与做市。
-- **工程化**：Foundry 单测 + fuzz、Vitest + Playwright、
+- `contracts/`（Foundry，Solidity ^0.8.19）：`Factory`、`Pair`、
+  LP `ERC20`，及子集外围 `Router02`、`WETH9`、
+  `UniswapV2Library`、`TransferHelper`。
+- `frontend/`（Next.js 15 App Router + ethers v6）：Swap、
+  Add/Remove Liquidity、TWAP 支撑的 Portfolio 持仓视图，
+  MetaMask 直连。
+- Demo：Sepolia 合约已验证 + Vercel 前端，测试币可用。
+- 测试与 CI：Foundry 单测 + fuzz、Vitest + Playwright、
   CI 门禁、一键本地/线上部署脚本。
 
 核心特性：
@@ -49,7 +48,7 @@ reentrancy lock。
 - UQ112x112 TWAP 预言机（`price0/1CumulativeLast` + `blockTimestampLast`）
 - 协议费：基于 `√k` 增长 mint LP（fee-on 时 1/6 归协议）
 - `CREATE2` 确定性 Pair 地址，library 可离线推导
-- DemoFaucet：测试币水龙头，支撑公共 Demo 体验
+- DemoFaucet：测试币水龙头（供公共 Demo 领水）
 
 ## Demo
 
@@ -75,19 +74,6 @@ Etherscan 验证（地址见[线上 Sepolia 部署](#线上-sepolia-部署)）�
 <p align="center"><em>Portfolio — TWAP 持仓视图（占位）</em></p>
 
 Screenshots pending — placeholders; see Live Demo: <https://defi-app-three.vercel.app/>.
-
-## Engineering Highlights
-
-| Challenge | Implementation | Why it matters |
-|---|---|---|
-| AMM 定价 | 恒定乘积 invariant | 无需许可的做市 |
-| Swap 手续费 | Fee-adjusted invariant（`1000/3`） | 0.3% 收费无需单独会计 |
-| LP 会计 | 几何平均 + 按比例份额 | 公平的流动性所有权 |
-| Pair 部署 | CREATE2 | 确定性地址，可离线推导 |
-| 预言机 | UQ112x112 累计价格 | 链上 TWAP |
-| 协议费 | `kLast` / `√k` 增长 mint LP | 无需逐笔结算协议收入 |
-| 重入 | Pair 级 `lock` | 保护所有状态变更 AMM 路径 |
-| 全栈集成 | Router + Next.js + 钱包 | 完整 DEX 生命周期 |
 
 ## 架构 Architecture
 
@@ -140,11 +126,10 @@ Pair 合约的六个核心机制，每个都有独立英文文档给出完整推
 `core / router / faucet / invariant / mocks / utils` 分类，覆盖
 Factory/CREATE2 推导、Pair 仅限 Factory 初始化、mint/burn 与
 `MINIMUM_LIQUIDITY` 锁定、fee-adjusted swap invariant、
-`_mintFee` / `kLast`、TWAP 累加器、边界情况与重入锁。除 2 个
-`testFuzz_*` 外，还持续运行 **stateful invariant fuzzing
-across randomized liquidity and swap sequences**（状态化不变量
-模糊测试：随机流动性操作与 swap 序列）。前端测试在
-`frontend/tests/`（`unit/` 为 Vitest、`e2e/` 为 Playwright）。
+`_mintFee` / `kLast`、TWAP 累加器、边界情况与重入锁：2 个
+`testFuzz_*` + stateful invariant fuzzing（随机流动性与 swap
+序列）。前端测试在 `frontend/tests/`（`unit/` 为 Vitest、
+`e2e/` 为 Playwright）。
 
 前端：19 个 Vitest 单测（hooks/组件/绑定）+ 3 个 Playwright
 e2e（portfolio、remove-liquidity、responsive）+ 只读 load
@@ -175,7 +160,7 @@ CI（`.github/workflows/test.yml`）：合约 `fmt --check` →
 
 ## 线上 Sepolia 部署
 
-公共 Demo **已上线**（测试网代币，无真实资金）：
+公共 Demo（测试网代币，无真实资金）：
 
 | 合约 | Sepolia 地址 |
 |---|---|

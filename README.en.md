@@ -1,4 +1,4 @@
-# Uniswap V2-style AMM DEX built from scratch
+# Uniswap V2-style AMM DEX (re-implemented, not forked)
 
 [中文版](README.md) | English
 
@@ -23,19 +23,19 @@ Sepolia Live Demo · Verified Contracts · CI · E2E
 
 ## Overview
 
-A Uniswap V2-inspired constant-product AMM **re-implemented from scratch with Solidity and
-Foundry** — not an import or fork of the canonical contracts. `Factory` / `Pair` / LP `ERC20` /
-`Router02` / `WETH9` are all hand-written, including the constant-product invariant, 0.3% fee
-encoding, LP accounting, TWAP accumulator, `MINIMUM_LIQUIDITY`, and the reentrancy lock.
+A re-implementation (not an import or fork) of the Uniswap V2 constant-product AMM: the core
+logic is self-contained and owned by this project — modifiable and evolvable without tracking
+upstream. `Factory` / `Pair` / LP `ERC20` / `Router02` / `WETH9` are our own implementations,
+covering the constant-product invariant, 0.3% fee encoding, LP accounting, TWAP accumulator,
+`MINIMUM_LIQUIDITY`, and the reentrancy lock.
 
-- **Uniswap V2 core from scratch**: `contracts/` (Foundry) hand-written `Factory`, `Pair`, LP
-  `ERC20`, plus a subset periphery `Router02`, `WETH9`, `UniswapV2Library`, `TransferHelper`.
-- **Full DEX loop**: `frontend/` (Next.js 15 App Router + ethers v6) supports Swap, Add/Remove
-  Liquidity, and a Portfolio view backed by on-chain TWAP, with direct MetaMask connectivity.
-- **Public demo is live**: verified Sepolia contracts + Vercel frontend — swap and
-  market-make with test tokens right away.
-- **Engineering rigor**: Foundry unit + fuzz tests, Vitest + Playwright, CI gates, one-command
-  local / production deployment scripts.
+- `contracts/` (Foundry, Solidity ^0.8.19): `Factory`, `Pair`, LP `ERC20`, plus the subset
+  periphery `Router02`, `WETH9`, `UniswapV2Library`, `TransferHelper`.
+- `frontend/` (Next.js 15 App Router + ethers v6): Swap, Add/Remove Liquidity, and a
+  TWAP-backed Portfolio position view, with direct MetaMask connectivity.
+- Demo: verified Sepolia contracts + Vercel frontend; test tokens usable.
+- Tests & CI: Foundry unit + fuzz tests, Vitest + Playwright, CI gates,
+  one-command local / production deployment scripts.
 
 Core features:
 
@@ -45,7 +45,7 @@ Core features:
 - UQ112x112 TWAP oracle (`price0/1CumulativeLast` + `blockTimestampLast`)
 - Protocol fee minted as LP on `√k` growth (1/6 to protocol when fee-on)
 - `CREATE2` deterministic pair addresses, derivable off-chain by the library
-- DemoFaucet: test-token faucet powering the public demo experience
+- DemoFaucet: test-token faucet for claiming test tokens on the public demo
 
 ## Demo
 
@@ -71,19 +71,6 @@ Deployment](#sepolia-testnet-deployment)).
 <p align="center"><em>Portfolio — /portfolio (placeholder)</em></p>
 
 Screenshots pending — placeholders; see Live Demo: <https://defi-app-three.vercel.app/>.
-
-## Engineering Highlights
-
-| Challenge | Implementation | Why it matters |
-|---|---|---|
-| AMM pricing | Constant-product invariant | Permissionless market making |
-| Swap fee | Fee-adjusted invariant (`1000/3`) | 0.3% fee with no separate accounting |
-| LP accounting | Geometric mean + proportional shares | Fair liquidity ownership |
-| Pair deployment | CREATE2 | Deterministic addresses, derivable off-chain |
-| Oracle | UQ112x112 cumulative prices | On-chain TWAP |
-| Protocol fee | `kLast` / `√k` growth mints LP | Protocol revenue without per-swap settlement |
-| Reentrancy | Pair-level `lock` | Protects every state-changing AMM path |
-| Full-stack integration | Router + Next.js + wallet | Complete DEX lifecycle |
 
 ## Architecture
 
@@ -137,9 +124,9 @@ Code references: `contracts/src/core/UniswapV2Pair.sol`, `UniswapV2Factory.sol`,
 Contracts: 12 test files in `contracts/test/` organized by `core / router / faucet / invariant /
 utils`, covering Factory/CREATE2 derivation, Factory-only pair initialization, mint/burn with
 the `MINIMUM_LIQUIDITY` lock, the fee-adjusted swap invariant, `_mintFee` / `kLast`, TWAP
-accumulators, edge cases, and the reentrancy lock. Beyond 2 `testFuzz_*` tests, the suite runs
-**stateful invariant fuzzing across randomized liquidity and swap sequences**. Frontend tests
-live in `frontend/tests/` (`unit/` for Vitest, `e2e/` for Playwright).
+accumulators, edge cases, and the reentrancy lock: 2 `testFuzz_*` tests + stateful invariant
+fuzzing over randomized liquidity and swap sequences. Frontend tests live in `frontend/tests/`
+(`unit/` for Vitest, `e2e/` for Playwright).
 
 Frontend: 19 Vitest unit tests (hooks/components/bindings) + 3 Playwright e2e (portfolio,
 remove-liquidity, responsive) + a read-only load test (`frontend/tests/load/`). Commands
@@ -166,7 +153,7 @@ Security properties:
 
 ## Sepolia Testnet Deployment
 
-The public demo **is live** (testnet tokens, no real funds):
+The public demo (testnet tokens, no real funds):
 
 | Contract | Sepolia Address |
 |---|---|
