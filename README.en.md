@@ -1,285 +1,383 @@
-# Uniswap V2–Style DEX
+# Uniswap V2-style AMM DEX built from scratch
 
 [中文版](README.md) | English
 
 ![CI](https://github.com/xtianxx/defi_app/actions/workflows/test.yml/badge.svg)
 
-A Uniswap V2–style decentralized exchange (DEX): an on-chain AMM with constant-product
-pricing (`x·y=k`), a 0.3% swap fee, TWAP price oracles, and a full web dApp that connects
-to it via MetaMask.
+```text
+Solidity · Foundry · Next.js · ethers v6
 
-The repository is a two-package monorepo:
+Constant Product AMM · Liquidity Pools · LP Tokens
+0.3% Swap Fee · Protocol Fee · TWAP · CREATE2
 
-- **`contracts/`** — Foundry project re-implementing Uniswap V2 core (`Factory`, `Pair`, LP
-  `ERC20`) and a simplified periphery (`Router02`, `WETH9`, `UniswapV2Library`,
-  `TransferHelper`), excluding flash swaps and multi-hop routing.
-- **`frontend/`** — Next.js 15 (App Router) dApp: swap, add/remove liquidity, and a
-  portfolio view backed by on-chain TWAP-only prices. ethers v6, React 19, Tailwind +
-  shadcn/ui, Vitest + Playwright.
+Sepolia Live Demo · Verified Contracts · CI · E2E
+```
 
-The dev loop deploys to local `anvil` (chainId 31337, deterministic). No real
-value is ever at risk; the public demo is deployed on the Sepolia testnet and
-hosted on Vercel (see "Try it online" and "Sepolia Testnet / Vercel Deployment"
-below).
+> **A Uniswap V2-inspired constant-product AMM implemented from scratch with Solidity and Foundry.**
+>
+> This project **re-implements the core AMM mechanisms instead of importing / forking Uniswap
+> contracts**: `Factory` / `Pair` / LP `ERC20` / `Router02` / `WETH9` are all hand-written
+> (including the constant-product invariant, 0.3% fee encoding, LP accounting, TWAP
+> accumulator, `MINIMUM_LIQUIDITY`, and the reentrancy lock).
 
-## Try it online
+| Entry | Link |
+|---|---|
+| 🌐 Live Demo | <https://defi-app-three.vercel.app/> |
+| ⛓ Network | Sepolia (chainId `11155111`), switch in MetaMask to interact |
+| ✅ Contracts | Factory / Router02 / WETH9 / Faucet / 4 tokens, all verified on Etherscan (addresses in [Sepolia Deployment](#sepolia-testnet-deployment)) |
+| 📖 Demo Guide | [demo-guide.md](specs/002-sepolia-vercel-deploy/demo-guide.md) (demo accounts & balances) |
+| ⚙️ Actions | [test.yml](.github/workflows/test.yml) |
 
-The project is deployed and live — no local setup needed:
+> 📸 Product screenshot: `docs/screenshots/swap.png` (TODO: open the Live Demo's `/swap` in a
+> 1440px browser, take a screenshot and commit it to that path; until then, see the Live Demo).
 
-- **Frontend (Vercel)**: <https://defi-app-three.vercel.app/>
-- **Contracts (Sepolia testnet)**: Factory, Router02, WETH9, the 4 tokens and 2 seeded
-  pairs are all deployed and verified on Etherscan, serving live on-chain data
-- Open the URL and switch MetaMask to Sepolia (chainId `11155111`) to swap, add/remove
-  liquidity, and view portfolio positions and fees; demo accounts and balances are in
-  the [demo guide](specs/002-sepolia-vercel-deploy/demo-guide.md)
+## What I Built
 
-> Everything on-chain is testnet (faucet/mock) tokens — no real value at risk.
+- **Uniswap V2 core from scratch**: `contracts/` (Foundry) hand-written `Factory`, `Pair`, LP
+  `ERC20`, plus a simplified periphery `Router02`, `WETH9`, `UniswapV2Library`, `TransferHelper`.
+- **Full DEX loop**: `frontend/` (Next.js 15 App Router + ethers v6) supports Swap, Add/Remove
+  Liquidity, and a Portfolio view backed by on-chain TWAP, with direct MetaMask connectivity.
+- **Public demo is live**: verified Sepolia contracts + Vercel frontend — try swapping and
+  market-making with test tokens right away.
+- **Engineering rigor**: Foundry unit + fuzz tests, frontend Vitest + Playwright, CI gates,
+  one-command local / production deployment scripts.
+
+## Core Features
+
+- Constant-product market making (`x·y=k`), direct-pair swaps
+- 0.3% swap fee (encoded into the invariant, no separate accounting)
+- LP token accounting: geometric-mean first mint + proportional mint/burn, `MINIMUM_LIQUIDITY`
+  permanently locked
+- TWAP oracle: `UQ112x112` cumulative prices + `blockTimestampLast`
+- Protocol fee: mints LP on `√k` growth (1/6 to protocol when fee-on)
+- `CREATE2` deterministic Pair addresses, derivable off-chain by the library
+- DemoFaucet: test-token faucet powering the public demo experience
+
+## Engineering Highlights
+
+| Challenge | Implementation | Why it matters |
+|---|---|---|
+| AMM pricing | Constant-product invariant | Permissionless market making |
+| Swap fee | Fee-adjusted invariant (`1000/3`) | 0.3% fee with no separate accounting |
+| LP accounting | Geometric mean + proportional shares | Fair liquidity ownership |
+| Pair deployment | CREATE2 | Deterministic addresses, derivable off-chain |
+| Oracle | UQ112x112 cumulative prices | On-chain TWAP |
+| Protocol fee | `kLast` / `√k` growth mints LP | Protocol revenue without per-swap settlement |
+| Reentrancy | Pair-level `lock` | Protects every state-changing AMM path |
+| Full-stack integration | Router + Next.js + wallet | Complete DEX lifecycle |
 
 ## Architecture
 
 ```text
-┌──────────────────────────────────────────────────────────────────────────┐
-│ contracts/  (Foundry, Solidity ^0.8.19, viaIR + optimizer 200 runs)      │
-│                                                                          │
-│   src/core/     Factory · Pair · ERC20 (LP) · Math · SafeMath · UQ112x112│
-│   src/router/   Router02 · WETH9 · UniswapV2Library · TransferHelper     │
-│   script/       DeployDemo.s.sol (Factory + Router + WETH9 + 4 tokens,   │
-│                 2 seeded pairs)                                          │
-│                                                                          │
-│   forge build ──► out/ (ABIs + build artifacts)                          │
-│   forge script --broadcast ──► broadcast/<chainId>/run-latest.json       │
-└───────────────┬───────────────────────────────┬──────────────────────────┘
-                │                               │
-                │ out/ ABIs                     │ broadcast/ addresses
-                ▼                               ▼
-┌──────────────────────────────────────────────────────────────────────────┐
-│ frontend/scripts/sync-deploy.ts   (argless; chainIds hardcoded in script)   │
-│   regenerates src/lib/contracts/{addresses,tokens}.ts                     │
-└───────────────────────────────────┬──────────────────────────────────────┘
-                                    ▼
-┌──────────────────────────────────────────────────────────────────────────┐
-│ frontend/  (Next.js 15 App Router)                                       │
-│   src/lib/contracts/addresses.ts   per-chain DEPLOYMENTS (anvil)         │
-│   src/lib/contracts/abis.ts        ABI bindings for the dApp             │
-│   src/app/  /swap · /liquidity · /portfolio · /debug                     │
-└──────────────────────────────────────────────────────────────────────────┘
+contracts/  (Foundry, Solidity ^0.8.19)
+  src/core/     Factory · Pair · ERC20 (LP) · Math · SafeMath · UQ112x112
+  src/router/   Router02 · WETH9 · UniswapV2Library · TransferHelper
+  src/faucet/   DemoFaucet (test-token faucet powering the public demo)
+  script/       DeployDemo.s.sol (Factory + Router + WETH9 + 4 tokens + 2 seeded pairs)
+
+Foundry deploy artifacts (out/ ABIs + broadcast/ per-chain addresses)
+          ↓  sync-deploy (npm run sync-deploy, argumentless multi-chain)
+          ↓  generated ABIs + address bindings
+Next.js dApp (/swap · /liquidity · /portfolio · /debug)
 ```
 
-The two packages are coupled only through generated artifacts: ABI exports from
-`contracts/out/` and per-chain deployed addresses from `broadcast/` run files. There is no
-root workspace tool — the packages are independent (see the `specs/` design docs for the
-full structure).
+The two packages are coupled only through generated artifacts (ABIs + deployed addresses);
+there is no root-level workspace. Full conventions live in the `specs/` design docs.
 
-## Prerequisites
+## Core AMM Mechanics
 
-- **Foundry** (forge, cast, anvil):
-  `curl -L https://foundry.paradigm.xyz | bash && foundryup`
-- **Node.js ≥ 20** and a package manager (npm/pnpm/bun)
-- **MetaMask** (or any EIP-1193 wallet) for browser flows
-
-## Quickstart — Local anvil (primary dev loop)
-
-The full runnable guide is [specs/001-uniswap-v2-resume/quickstart.md](specs/001-uniswap-v2-resume/quickstart.md);
-the canonical dev loop is:
-
-```bash
-# A.1 — start a local chain (keep this terminal open)
-anvil --chain-id 31337 --port 8545
-
-# A.2 — deploy the demo (Factory, Router02, WETH9, 4 tokens, 2 seeded pairs)
-cd contracts
-forge install                                   # if contracts/lib is empty
-forge build
-forge script script/DeployDemo.s.sol:DeployDemo \
-  --rpc-url http://127.0.0.1:8545 \
-  --broadcast --slow \
-  --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 \
-  -vvv
-
-# A.3 — sync deployed addresses + ABIs into the frontend
-cd ../frontend
-npm run sync-deploy
-
-# A.4 — run the frontend
-npm install
-npm run dev                                     # http://localhost:3000
-
-# A.5 — browser validation (manual)
-#   Connect MetaMask to anvil (chainId 31337, RPC http://127.0.0.1:8545),
-#   swap WETH → USDC on /swap, approve + confirm, check the empty
-#   USDC/DAI pool edge case, add liquidity on /liquidity, and verify
-#   positions + fees on /portfolio.
-
-# A.6 — automated validation (CI parity)
-cd ../contracts
-forge fmt --check
-forge build --sizes
-forge test -vvv
-forge test --coverage
-forge snapshot
-cd ../frontend
-npm run lint
-npm run test
-npm run test:e2e
-```
-
-### One-command quick start (deploy scripts)
-
-Instead of the manual steps above, use the deploy script to start a full local
-environment in one command:
-
-```bash
-# Start a fresh anvil → deploy the demo → sync addresses → verify swap-ready
-# (leaves anvil running so the frontend can connect)
-./scripts/dev-deploy.sh
-
-# Same, plus start the frontend dev server (Ctrl+C stops everything)
-./scripts/dev-deploy.sh --dev
-```
-
-`dev-deploy.sh` is the quick-deployment script: it restarts a clean anvil (chainId
-31337, port 8545), deploys the demo (Factory, Router02, WETH9, 4 tokens, 2 seeded
-pairs), regenerates the frontend bindings via `sync-deploy.ts`, and verifies the
-deployer can swap. After it finishes, run `cd frontend && npm run dev` (unless you
-used `--dev`) and open http://localhost:3000.
-
-`./scripts/test-e2e.sh --dev` and `./scripts/test-e2e-phase5.sh --dev` are
-alternative quick-start paths with the same anvil + deploy + sync + dev-server
-flow, without running any tests.
-
-## Deployment targets
-
-- **Local dev/testing** — anvil (chainId 31337, deterministic dev loop); see the
-  Quickstart section above.
-- **Public demo** — Sepolia testnet (chainId 11155111) + Vercel hosting; see below.
-
-## Sepolia Testnet / Vercel Deployment (public demo)
-
-The public demo environment is **live**: contracts deployed on the **Sepolia testnet**
-(chainId 11155111) and verified on Etherscan, frontend publicly hosted on **Vercel** at
-<https://defi-app-three.vercel.app/> (connect to Sepolia and start trading). The demo
-script, demo accounts and deployed addresses live in
-[specs/002-sepolia-vercel-deploy/demo-guide.md](specs/002-sepolia-vercel-deploy/demo-guide.md);
-the full validation scenarios (public access, demo accounts, in-app faucet, local
-regression, reproducibility) are in
-[specs/002-sepolia-vercel-deploy/quickstart.md](specs/002-sepolia-vercel-deploy/quickstart.md).
-
-The whole deployment can be reproduced in **≤ 30 minutes** with the 6 steps below:
-
-| # | Step | Time budget |
-|---|---|---|
-| 1 | Generate 3 fresh demo-account keys (master / LP provider / swapper): `cast wallet new`, record the addresses (never reuse anvil's well-known keys) | ~3 min |
-| 2 | Fund the master via public Sepolia faucets (0.25–0.5 ETH; faucet ladder in research.md) | ~5 min |
-| 3 | One-shot deploy + seed + verify: `forge script script/DeployDemoSepolia.s.sol --broadcast --verify --slow` (with `SEPOLIA_RPC_URL` / `ETHERSCAN_API_KEY` exported) | ~10 min |
-| 4 | Regenerate and commit frontend bindings: `npm run sync-deploy` (argless, multi-chain) → `git add` + commit | ~2 min |
-| 5 | Import the repo on Vercel: Root Directory = `frontend/`, env var `SEPOLIA_RPC_URL` (Production + Preview) | ~5 min |
-| 6 | Replenish demo accounts (primary path): `./scripts/sepolia-deploy.sh fund-demo-accounts` | ~5 min |
-
-Total: ~30 minutes.
-
-```bash
-# 1. Generate demo-account keys (× 3)
-cast wallet new
-
-# 2. Fund master via public Sepolia faucets (ladder in research.md)
-
-# 3. One-shot deploy + seed + Etherscan verification (from contracts/; --verify auto-decodes constructor args)
-export SEPOLIA_RPC_URL=... ETHERSCAN_API_KEY=...
-forge script script/DeployDemoSepolia.s.sol --rpc-url "$SEPOLIA_RPC_URL" --broadcast \
-  --verify --etherscan-api-key "$ETHERSCAN_API_KEY" --slow -vvv
-
-# 4. Regenerate frontend bindings (argless, multi-chain) and commit
-cd ../frontend && npm run sync-deploy
-git add frontend/src/lib/contracts/addresses.ts frontend/src/lib/contracts/tokens.ts && git commit
-
-# 5. Vercel: import repo → Root Directory: frontend/ → env SEPOLIA_RPC_URL (Production + Preview) → Deploy
-
-# 6. Replenish demo accounts (primary path)
-./scripts/sepolia-deploy.sh fund-demo-accounts
-```
-
-After deployment: every contract address from step 3 shows verified source code on
-`sepolia.etherscan.io`; a fresh browser at <https://defi-app-three.vercel.app/> connects
-via MetaMask (Sepolia network added) and loads live on-chain balances and prices.
-
-`./scripts/sepolia-deploy.sh` (no subcommand) runs the whole deployment in one
-shot: preflight (`contracts/.env`, toolchain, master balance) → `forge build` →
-dry-run simulation against live Sepolia (nothing broadcast) → `--broadcast
---verify --slow` → `sync-deploy.ts` → summary table of deployed addresses and
-verification status.
-
-### Environment variables (server-only, never `NEXT_PUBLIC_`)
-
-| Variable | Purpose | Notes |
-|---|---|---|
-| `SEPOLIA_RPC_URL` | Sepolia RPC endpoint (Alchemy/Infura free tier) | Used by forge for deploys; read server-side by the frontend `/api/reserves` route (`createServerProvider()`) — **server-only, never prefix with `NEXT_PUBLIC_`**; configure on Vercel for Production + Preview |
-| `ETHERSCAN_API_KEY` | Free Etherscan API key | Used by `--verify` for contract verification |
-| `SEPOLIA_DEPLOYER_KEY` | Master deployer private key | Deployer + funding source; **never documented anywhere** (demo-guide.md only records demo-account addresses) |
-
-All live in the **gitignored** `contracts/.env` (template: `contracts/.env.example`),
-read by `sepolia-deploy.sh` and referenced only via variables — never inlined into
-commands or commits. Same rule on the frontend: environment variables are read by
-server-side route handlers only; the client never depends on any env var.
-
-## Contract addresses
-
-Deployed addresses are generated by `scripts/sync-deploy.ts` into
-`frontend/src/lib/contracts/addresses.ts` as a per-chain `DEPLOYMENTS` record (anvil
-31337 + Sepolia 11155111), populated from the Foundry `broadcast/` run-latest JSON of the deploy script. Re-run `sync-deploy.ts` after any redeploy — `broadcast/` is gitignored and
-the generated files are tracked.
-
-Deploy scripts: `contracts/script/DeployDemo.s.sol` (main demo),
-`contracts/script/core/DeployFactory.s.sol`, `contracts/script/router/DeployRouter.s.sol`.
-
-## Testing
-
-**Contracts** (from `contracts/`):
-
-```bash
-forge fmt --check        # formatting
-forge build --sizes      # Router02 must stay under the 24 KB EIP-170 limit
-forge test -vvv          # all tests green
-forge test --coverage    # ≥ 95% line coverage
-forge snapshot           # gas baseline; CI diffs with --check
-```
-
-**Frontend** (from `frontend/`):
-
-```bash
-npm run lint             # ESLint
-npx tsc --noEmit         # TypeScript strict
-npm run test             # Vitest unit + component
-npm run build            # Next.js production build
-npm run test:e2e         # Playwright against a local anvil chain
-```
-
-**Root scripts** (canonical dev loop):
-
-| Script | Purpose |
-|---|---|
-| `./scripts/test-unit.sh` | forge test + vitest (both packages) |
-| `./scripts/test-e2e.sh` | Fresh anvil → DeployDemo → sync → forge test → vitest → build + Playwright |
-| `./scripts/test-e2e-phase5.sh` | US3 (liquidity-removal) loop with an LP-readiness gate |
-| `./scripts/dev-deploy.sh` | **Quick deploy**: fresh anvil → deploy → sync → verify; leaves anvil running for the frontend (`--dev` also starts `npm run dev`) |
-
-## CI
-
-GitHub Actions (`.github/workflows/test.yml`) runs, per push/PR: contracts
-`forge fmt --check` → `forge build --sizes` → `forge test -vvv` (+ coverage and gas
-snapshot when artifacts exist), and frontend `tsc --noEmit` → `npm run lint` →
-`npm run test` → `npm run build`.
-
-## Repository structure
+Lifecycle of a complete swap:
 
 ```text
-contracts/      Foundry project (core + router + DeployDemo scripts + tests)
-frontend/       Next.js 15 App Router dApp (pages, hooks, generated bindings)
-scripts/        test-unit.sh · test-e2e.sh · test-e2e-phase5.sh · dev-deploy.sh · sepolia-deploy.sh
-specs/          Authoritative feature docs (spec, plan, tasks, quickstart)
-.github/        CI workflows (test.yml)
+User
+  ↓
+Router (checks deadline / slippage, computes quote)
+  ↓
+transfer tokenIn → Pair
+  ↓
+Pair computes actual amountIn (balance-delta: current balance − reserve)
+  ↓
+apply 0.3% fee
+  ↓
+enforce:
+  balance0Adjusted × balance1Adjusted ≥ reserve0 × reserve1 × 1000²
+  ↓
+update reserves
+  ↓
+update TWAP accumulator (_update)
 ```
 
-See the `specs/` design docs for the full structure, conventions, and gotchas.
+Quote formula (`UniswapV2Library.getAmountOut`):
+
+```text
+amountOut =
+  amountIn × 997 × reserveOut
+  /
+  (reserveIn × 1000 + amountIn × 997)
+```
+
+The key point: the Pair does not trust the numbers the Router passes in — it computes the real
+input as **balance after receipt minus reserve**, then gates every swap with the fee-adjusted
+invariant (`contracts/src/core/UniswapV2Pair.sol:swap`).
+
+## Why it's not just `x × y = k`
+
+Many READMEs stop at a single line `x·y=k`. What actually executes is the check with the
+**0.3% fee encoded into the invariant**:
+
+```text
+(balance0 × 1000 − amount0In × 3)
+×
+(balance1 × 1000 − amount1In × 3)
+≥
+reserve0 × reserve1 × 1000²
+```
+
+Meaning: first deduct 0.3% of the input (`×997/1000`); the remainder must then satisfy `k`
+invariance. The fee therefore needs **no separate transfer accounting** — it settles directly
+as `k` growth that rewards all LPs. This is the line between "knowing the formula" and
+"having implemented an AMM".
+
+## Liquidity & LP Accounting
+
+Initial liquidity (first mint):
+
+```text
+liquidity = sqrt(amount0 × amount1) − MINIMUM_LIQUIDITY
+```
+
+Subsequent adds:
+
+```text
+liquidity = min(
+  amount0 × totalSupply / reserve0,
+  amount1 × totalSupply / reserve1
+)
+```
+
+Removing liquidity (burn, proportional):
+
+```text
+amount0 = liquidity × reserve0 / totalSupply
+amount1 = liquidity × reserve1 / totalSupply
+```
+
+`MINIMUM_LIQUIDITY = 1000` (wei) is permanently locked to the zero address at the first mint.
+This prevents pathological share manipulation from an undersized first deposit, protecting LP
+share accounting from "dust attack" distortion
+(`contracts/src/core/UniswapV2Pair.sol:mint/burn`).
+
+## TWAP Oracle
+
+The Pair maintains two cumulative prices:
+
+```text
+price0CumulativeLast
+price1CumulativeLast
+```
+
+Every `mint / burn / swap / sync` accumulates through `_update`:
+
+```text
+spot price
+   ↓
+reserve1 / reserve0 (UQ112x112 fixed-point encoding)
+   ↓
+price × timeElapsed
+   ↓
+cumulative price
+```
+
+Taking the TWAP:
+
+```text
+TWAP =
+  (cumulativePrice(t1) − cumulativePrice(t0))
+  /
+  (t1 − t0)
+```
+
+This one spot shows DeFi, fixed-point math, oracles, and Solidity time-weighting in a single
+mechanism — high resume value
+(`contracts/src/core/UniswapV2Pair.sol:_update`, `UQ112x112`).
+
+## CREATE2 Deterministic Pair
+
+```text
+tokenA + tokenB
+      ↓
+sort tokens (token0 < token1)
+      ↓
+salt = keccak256(token0, token1)
+      ↓
+CREATE2
+      ↓
+deterministic Pair address
+```
+
+Significance: the `Router` / library can derive the Pair address **off-chain without querying
+Factory storage** (`pairFor`). This repo reads the init-code hash dynamically from the Factory
+(rather than a hardcoded constant), and the Factory tests cover CREATE2 derivation
+consistency. A classic Solidity interview topic.
+
+## Protocol Fee
+
+More than just "charge 0.3% per trade":
+
+```text
+Swap fee: 0.30%
+
+fee off (feeTo == 0): 100% → LPs
+fee on (feeTo != 0):  5/6 → LPs, 1/6 → protocol
+```
+
+Key difference: the protocol fee is **not a token transfer per swap** — it mints LP to `feeTo`
+on `√k` growth (`_mintFee`: `liquidity = totalSupply×(√k−√kLast)/(√k×5+√kLast)`, tracked via
+`kLast`). No per-trade settlement, no extra accounting — consistent with Uniswap V2's fee-on
+design.
+
+## Testing & Invariants
+
+What's verified first, then the commands. Tests are organized by
+`core / router / faucet / mocks / utils` (11 files total in `contracts/test/`):
+
+```text
+Core
+├─ Factory / CREATE2 (incl. library derivation consistency)
+├─ Pair initialization (Factory-only)
+├─ Mint / burn (incl. MINIMUM_LIQUIDITY lock)
+├─ Swap invariant (incl. fee-adjusted K check)
+├─ Fee accounting (_mintFee / kLast)
+├─ TWAP (cumulative + timeElapsed)
+└─ sync / skim
+
+Router
+├─ Add / remove liquidity (incl. permit variants)
+├─ Token → Token swap (direct pair)
+├─ ETH / WETH paths
+└─ Slippage / deadline
+
+Edge cases
+├─ insufficient liquidity / output / input
+├─ zero input / output
+├─ invalid recipient
+├─ reentrancy lock (LOCKED)
+└─ reserve overflow (uint112)
+```
+
+Fuzz / invariant status (honest disclosure): there are currently 2 `testFuzz_*` tests
+(`Math.sqrt` lower bound, faucet time window) but **no stateful invariant handler yet**.
+The invariants an AMM is best suited for (roadmap, ordered by cost/benefit):
+
+```text
+reserve0 × reserve1 does not decrease after fees (post-swap)
+LP mint/burn preserves proportional ownership
+swap output never exceeds reserves
+totalSupply / LP accounting internally consistent
+CREATE2 address == library-derived address
+handler: addLiquidity / swap0For1 / swap1For0 / removeLiquidity / sync executed randomly thousands of times
+```
+
+Frontend: 19 Vitest unit tests (hooks/components/bindings) + 3 Playwright e2e + read-only load
+test. Commands (identical to CI; full loops live in the scripts):
+
+```bash
+./scripts/test-unit.sh                  # forge test + vitest (both packages)
+./scripts/test-e2e.sh                   # fresh anvil → deploy → sync → forge + vitest → build + Playwright
+cd contracts && forge test -vvv && forge test --coverage
+cd frontend && npx tsc --noEmit && npm run lint && npm run test
+```
+
+CI (`.github/workflows/test.yml`): contracts `fmt --check` → `build --sizes` (Router02 held to
+the 24KB limit) → `forge test`; frontend `tsc` → `lint` → `vitest` → `build`. e2e (Playwright)
+runs locally via the scripts.
+
+## Security Properties
+
+- Constant-product invariant enforced after every swap (incl. fee-adjusted check)
+- Pair-level reentrancy lock on all of `mint / burn / swap / skim / sync`
+- Initial `MINIMUM_LIQUIDITY` permanently locked, preventing first-liquidity manipulation
+- Reserves capped at `uint112`; overflow reverts outright
+- `initialize` callable only by the Factory
+- Fee-adjusted balances checked before reserves are updated
+- `_safeTransfer` compatible with non-returning tokens; `permit` with deadline + signature
+  verification
+
+## Sepolia Testnet Deployment
+
+The public demo **is live** (testnet tokens, no real funds):
+
+| Contract | Sepolia Address |
+|---|---|
+| Factory | [0xc32bc046beafd48827f3d55356568476df322dde](https://sepolia.etherscan.io/address/0xc32bc046beafd48827f3d55356568476df322dde) |
+| Router02 | [0xb3cafdd61bdb7d1c24b8ec683002d1fc92401cd4](https://sepolia.etherscan.io/address/0xb3cafdd61bdb7d1c24b8ec683002d1fc92401cd4) |
+| WETH9 | [0xd1647800688ccb78c1f378329110fd10791b8af9](https://sepolia.etherscan.io/address/0xd1647800688ccb78c1f378329110fd10791b8af9) |
+| DemoFaucet | [0xcba03ecf90db02aae02fa02dbba6e55b6431b9db](https://sepolia.etherscan.io/address/0xcba03ecf90db02aae02fa02dbba6e55b6431b9db) |
+| USDC / DAI / WBTC | [0xf20503…5566](https://sepolia.etherscan.io/address/0xf205032b263672b814d26c81fa6b1c2697855566) / [0xfa30fb…7a97](https://sepolia.etherscan.io/address/0xfa30fbba942e92afe1bcfaed35698f360d9f7a97) / [0x1ea6c4…23df](https://sepolia.etherscan.io/address/0x1ea6c4954ab3632dfccdc676db96a3ec1c6023df) |
+
+- Seeded pairs: WETH/USDC, WETH/DAI (Pair addresses are derived at runtime by the library, not
+  committed as hardcoded values).
+- Try it: open <https://defi-app-three.vercel.app/>, switch MetaMask to Sepolia and swap,
+  add/remove liquidity, or view your positions; test tokens come from the in-app faucet, demo
+  accounts in demo-guide.
+- Address source: `frontend/src/lib/contracts/addresses.ts` (`DEPLOYMENTS`, anvil 31337 +
+  Sepolia 11155111), generated and committed from Foundry `broadcast/` via `npm run
+  sync-deploy`.
+
+## Quick Start
+
+Local development (one command, recommended):
+
+```bash
+./scripts/dev-deploy.sh --dev
+# fresh anvil → deploy the full AMM (Factory/Router/WETH9/4 tokens/2 pairs)
+# → sync ABI+address bindings → verify swap-ready → start frontend http://localhost:3000
+```
+
+Full manual steps → [specs/001 quickstart](specs/001-uniswap-v2-resume/quickstart.md).
+
+Reproduce the production deployment (one command + docs):
+
+```bash
+./scripts/sepolia-deploy.sh
+```
+
+Full 6 steps (≤30 min: keys/faucet/verification/Vercel/top-up) →
+[specs/002 quickstart](specs/002-sepolia-vercel-deploy/quickstart.md).
+Env var template in `contracts/.env.example` (`SEPOLIA_RPC_URL` is read server-side only, never
+prefixed with `NEXT_PUBLIC_`).
+
+## Tech Stack
+
+| Layer | Tech |
+|---|---|
+| Contracts | Solidity ^0.8.19, Foundry, viaIR + optimizer 200 runs |
+| Frontend | Next.js 15 App Router, React 19, strict TS, ethers v6, react-query, Tailwind + shadcn/ui |
+| Testing | Foundry (unit + fuzz) · Vitest · Playwright · read-only load test |
+| Deployment | Anvil (31337) · Sepolia (11155111) · Vercel · Etherscan verification |
+| Bindings | `sync-deploy`: broadcast/out → generated ABIs + address bindings |
+
+Frontend pages: `/swap` swap · `/liquidity` add/remove liquidity · `/portfolio` TWAP position
+view · `/faucet` test-token faucet · `/debug` debug. Protocol 70%, dApp 30%: pages are the presentation layer of the
+protocol; the core is on-chain AMM accounting.
+
+## Scope / Non-goals
+
+- No flash swaps (`swap` has no `bytes data` callback parameter).
+- No multi-hop routing: all swap paths are limited to direct pairs (`path.length == 2`,
+  otherwise `DirectPairOnly`).
+- `Router02` is a subset implementation (incl. `removeLiquidityWithPermit`); the
+  fee-on-transfer compatibility variant was not carried over.
+- The public demo is testnet + faucet assets only; no real funds involved.
+
+## Docs
+
+- Runnable local guide: [specs/001 quickstart](specs/001-uniswap-v2-resume/quickstart.md)
+- Sepolia deployment guide: [specs/002 quickstart](specs/002-sepolia-vercel-deploy/quickstart.md)
+- Demo narrative & accounts: [specs/002 demo-guide](specs/002-sepolia-vercel-deploy/demo-guide.md)
+- Faucet / frontend API contracts: [specs/002 contracts](specs/002-sepolia-vercel-deploy/contracts/)
+- Research & data model: [specs/002 research](specs/002-sepolia-vercel-deploy/research.md) ·
+  [data-model](specs/002-sepolia-vercel-deploy/data-model.md)
 
 ## License
 

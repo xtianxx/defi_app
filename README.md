@@ -1,276 +1,360 @@
-# Uniswap V2 风格去中心化交易所（DEX）
+# Uniswap V2-style AMM DEX built from scratch
 
 中文 | [English](README.en.md)
 
 ![CI](https://github.com/xtianxx/defi_app/actions/workflows/test.yml/badge.svg)
 
-一个 Uniswap V2 风格的去中心化交易所（DEX）：链上 AMM 采用恒定乘积定价
-（`x·y=k`）、0.3% 交易手续费、TWAP 价格预言机，并配有通过 MetaMask 连接合约的
-完整 Web dApp。
+```text
+Solidity · Foundry · Next.js · ethers v6
 
-本仓库是包含两个独立包的 monorepo：
+Constant Product AMM · Liquidity Pools · LP Tokens
+0.3% Swap Fee · Protocol Fee · TWAP · CREATE2
 
-- **`contracts/`** — Foundry 项目，重新实现了 Uniswap V2 核心（`Factory`、`Pair`、
-  LP `ERC20`）和简化版外围（`Router02`、`WETH9`、`UniswapV2Library`、
-  `TransferHelper`），不含闪电兑换和多跳路由。
-- **`frontend/`** — Next.js 15（App Router）dApp：兑换、添加/移除流动性，以及基于
-  链上 TWAP 价格的持仓视图。ethers v6、React 19、Tailwind + shadcn/ui、Vitest +
-  Playwright。
+Sepolia Live Demo · Verified Contracts · CI · E2E
+```
 
-开发循环部署在本地 `anvil`（chainId 31337，确定性），全程不涉及真实资金；公共演示
-环境已部署在 Sepolia 测试网并由 Vercel 托管（见"在线体验"与"Sepolia 测试网 /
-Vercel 部署"）。
+> **A Uniswap V2-inspired constant-product AMM implemented from scratch with Solidity and Foundry.**
+>
+> 本项目**重新实现核心 AMM 机制，而不是 import / fork Uniswap 合约**：`Factory` / `Pair` /
+> LP `ERC20` / `Router02` / `WETH9` 均为手写实现（含恒定乘积 invariant、0.3% 手续费编码、
+> LP 会计、TWAP 累加器、`MINIMUM_LIQUIDITY`、reentrancy lock）。
 
-## 在线体验
+| 入口 | 链接 |
+|---|---|
+| 🌐 Live Demo | <https://defi-app-three.vercel.app/> |
+| ⛓ Network | Sepolia（chainId `11155111`），MetaMask 切换即可交互 |
+| ✅ Contracts | Factory / Router02 / WETH9 / Faucet / 4 tokens，均已在 Etherscan 验证（地址见[线上部署](#线上-sepolia-部署)） |
+| 📖 Demo 指南 | [demo-guide.md](specs/002-sepolia-vercel-deploy/demo-guide.md)（演示账户与余额） |
+| ⚙️ Actions | [test.yml](.github/workflows/test.yml) |
 
-项目已部署上线，无需搭建本地环境即可直接体验：
+> 📸 产品截图：`docs/screenshots/swap.png`（TODO：用 1440px 浏览器打开线上 Demo 的 `/swap` 截一屏提交到该路径；
+> 在此之前先看 Live Demo）。
 
-- **线上前端（Vercel）**：<https://defi-app-three.vercel.app/>
-- **链上合约（Sepolia 测试网）**：Factory、Router02、WETH9、4 个代币与 2 个
-  预置交易对均已部署并通过 Etherscan 验证，页面读取真实链上数据
-- 打开线上地址，将 MetaMask 切换到 Sepolia 网络（chainId `11155111`）即可
-  兑换、添加/移除流动性、查看持仓与手续费；演示账户与余额见
-  [演示指南](specs/002-sepolia-vercel-deploy/demo-guide.md)
+## 我做了什么
 
-> 链上均为测试网代币（faucet 发放，无真实资金），可放心体验。
+- **从零实现 Uniswap V2 核心**：`contracts/`（Foundry）手写 `Factory`、`Pair`、LP `ERC20`，以及简化版
+  外围 `Router02`、`WETH9`、`UniswapV2Library`、`TransferHelper`。
+- **完整 DEX 闭环**：`frontend/`（Next.js 15 App Router + ethers v6）支持 Swap、Add/Remove Liquidity、
+  基于链上 TWAP 的 Portfolio 持仓视图，MetaMask 直连。
+- **公共 Demo 已上线**：Sepolia 合约已验证 + Vercel 前端，可直接用测试币体验兑换与做市。
+- **工程化**：Foundry 单测 + fuzz、前台 Vitest + Playwright、CI 门禁、一键本地/线上部署脚本。
+
+## 核心特性
+
+- 恒定乘积做市（`x·y=k`），直接交易对兑换
+- 0.3% swap fee（编码进 invariant，无需单独记账）
+- LP token 会计：几何平均首发 + 按比例增发/销毁，`MINIMUM_LIQUIDITY` 永久锁定
+- TWAP 预言机：`UQ112x112` 累计价格 + `blockTimestampLast`
+- Protocol fee：基于 `√k` 增长 mint LP（fee-on 时 1/6 归协议）
+- `CREATE2` 确定性 Pair 地址，library 可离线推导
+- DemoFaucet：测试币水龙头，支撑公共 Demo 体验
+
+## Engineering Highlights
+
+| Challenge | Implementation | Why it matters |
+|---|---|---|
+| AMM 定价 | 恒定乘积 invariant | 无需许可的做市 |
+| Swap 手续费 | Fee-adjusted invariant（`1000/3`） | 0.3% 收费无需单独会计 |
+| LP 会计 | 几何平均 + 按比例份额 | 公平的流动性所有权 |
+| Pair 部署 | CREATE2 | 确定性地址，可离线推导 |
+| 预言机 | UQ112x112 累计价格 | 链上 TWAP |
+| 协议费 | `kLast` / `√k` 增长 mint LP | 无需逐笔结算协议收入 |
+| 重入 | Pair 级 `lock` | 保护所有状态变更 AMM 路径 |
+| 全栈集成 | Router + Next.js + 钱包 | 完整 DEX 生命周期 |
 
 ## 架构
 
 ```text
-┌──────────────────────────────────────────────────────────────────────────┐
-│ contracts/  (Foundry, Solidity ^0.8.19, viaIR + optimizer 200 runs)      │
-│                                                                          │
-│   src/core/     Factory · Pair · ERC20 (LP) · Math · SafeMath · UQ112x112│
-│   src/router/   Router02 · WETH9 · UniswapV2Library · TransferHelper     │
-│   script/       DeployDemo.s.sol (Factory + Router + WETH9 + 4 tokens,   │
-│                 2 seeded pairs)                                          │
-│                                                                          │
-│   forge build ──► out/ (ABIs + build artifacts)                          │
-│   forge script --broadcast ──► broadcast/<chainId>/run-latest.json       │
-└───────────────┬───────────────────────────────┬──────────────────────────┘
-                │                               │
-                │ out/ ABIs                     │ broadcast/ addresses
-                ▼                               ▼
-┌──────────────────────────────────────────────────────────────────────────┐
-│ frontend/scripts/sync-deploy.ts   (argless; chainIds hardcoded in script)   │
-│   regenerates src/lib/contracts/{addresses,tokens}.ts                     │
-└───────────────────────────────────┬──────────────────────────────────────┘
-                                    ▼
-┌──────────────────────────────────────────────────────────────────────────┐
-│ frontend/  (Next.js 15 App Router)                                       │
-│   src/lib/contracts/addresses.ts   per-chain DEPLOYMENTS (anvil)         │
-│   src/lib/contracts/abis.ts        ABI bindings for the dApp             │
-│   src/app/  /swap · /liquidity · /portfolio · /debug                     │
-└──────────────────────────────────────────────────────────────────────────┘
+contracts/  (Foundry, Solidity ^0.8.19)
+  src/core/     Factory · Pair · ERC20 (LP) · Math · SafeMath · UQ112x112
+  src/router/   Router02 · WETH9 · UniswapV2Library · TransferHelper
+  src/faucet/   DemoFaucet（测试币水龙头，支撑公共 Demo）
+  script/       DeployDemo.s.sol（Factory + Router + WETH9 + 4 tokens + 2 seeded pairs）
+
+Foundry 部署产物（out/ ABIs + broadcast/ 各链地址）
+          ↓  sync-deploy（npm run sync-deploy，无参数多链）
+          ↓  生成的 ABI + 地址绑定
+Next.js dApp（/swap · /liquidity · /portfolio · /debug）
 ```
 
-两个包仅通过生成产物耦合：`contracts/out/` 导出的 ABI，以及 `broadcast/` 运行文件
-中的各链部署地址。没有根级 workspace 工具——两个包相互独立（完整结构见
-`specs/` 目录下的设计文档）。
+两个包仅通过生成产物耦合（ABI + 部署地址），无根级 workspace。完整约定见 `specs/` 设计文档。
 
-## 环境要求
+## Core AMM Mechanics
 
-- **Foundry**（forge、cast、anvil）：
-  `curl -L https://foundry.paradigm.xyz | bash && foundryup`
-- **Node.js ≥ 20** 及包管理器（npm/pnpm/bun）
-- **MetaMask**（或任意 EIP-1193 钱包）用于浏览器流程
-
-## 快速开始 — 本地 anvil（主要开发循环）
-
-完整的可运行指南见 [specs/001-uniswap-v2-resume/quickstart.md](specs/001-uniswap-v2-resume/quickstart.md)；
-标准开发循环如下：
-
-```bash
-# A.1 — 启动本地链（保持此终端开启）
-anvil --chain-id 31337 --port 8545
-
-# A.2 — 部署演示环境（Factory、Router02、WETH9、4 个代币、2 个预置交易对）
-cd contracts
-forge install                                   # 若 contracts/lib 为空
-forge build
-forge script script/DeployDemo.s.sol:DeployDemo \
-  --rpc-url http://127.0.0.1:8545 \
-  --broadcast --slow \
-  --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 \
-  -vvv
-
-# A.3 — 将部署地址 + ABI 同步到前端
-cd ../frontend
-npm run sync-deploy
-
-# A.4 — 启动前端
-npm install
-npm run dev                                     # http://localhost:3000
-
-# A.5 — 浏览器验证（手动）
-#   将 MetaMask 连接到 anvil（chainId 31337，RPC http://127.0.0.1:8545），
-#   在 /swap 用 WETH 兑换 USDC，approve 并确认；检查 USDC/DAI 空池边界
-#   情况；在 /liquidity 添加流动性；在 /portfolio 验证持仓与手续费。
-
-# A.6 — 自动化验证（与 CI 一致）
-cd ../contracts
-forge fmt --check
-forge build --sizes
-forge test -vvv
-forge test --coverage
-forge snapshot
-cd ../frontend
-npm run lint
-npm run test
-npm run test:e2e
-```
-
-### 一条命令快速启动（部署脚本）
-
-除手动步骤外，也可以直接用部署脚本一条命令启动完整本地环境：
-
-```bash
-# 启动全新 anvil → 部署演示 → 同步地址 → 验证可兑换
-# （保持 anvil 运行，前端才能连接）
-./scripts/dev-deploy.sh
-
-# 同上，另自动启动前端 dev server（Ctrl+C 全部停止）
-./scripts/dev-deploy.sh --dev
-```
-
-`dev-deploy.sh` 是快速部署脚本：重启干净的 anvil（chainId 31337，端口 8545）、
-部署演示环境（Factory、Router02、WETH9、4 个代币、2 个预置交易对）、通过
-`sync-deploy.ts` 重新生成前端绑定，并验证部署账户可以完成兑换。结束后运行
-`cd frontend && npm run dev`（除非使用了 `--dev`），打开 http://localhost:3000。
-
-`./scripts/test-e2e.sh --dev` 和 `./scripts/test-e2e-phase5.sh --dev` 是相同的
-anvil + 部署 + 同步 + dev-server 流程的替代快速入口（不跑测试）。
-
-## 部署目标
-
-- **本地开发/测试** — anvil（chainId 31337，确定性开发循环），见上方"快速开始"。
-- **公共演示** — Sepolia 测试网（chainId 11155111）+ Vercel 托管，见下方。
-
-## Sepolia 测试网 / Vercel 部署（公共演示）
-
-公共演示环境**已上线**：合约部署在 **Sepolia 测试网**（chainId 11155111）并在
-Etherscan 上验证，前端由 **Vercel** 公开托管，可通过
-<https://defi-app-three.vercel.app/> 在线访问（连接 Sepolia 网络即可开始体验）。
-演示脚本、演示账户与已部署地址见
-[specs/002-sepolia-vercel-deploy/demo-guide.md](specs/002-sepolia-vercel-deploy/demo-guide.md)；
-完整验证场景（公开访问、演示账户、应用内 faucet、本地回归、可复现性）见
-[specs/002-sepolia-vercel-deploy/quickstart.md](specs/002-sepolia-vercel-deploy/quickstart.md)。
-
-按以下 6 步可在 **≤ 30 分钟**内完整复现整个部署：
-
-| # | 步骤 | 时间预算 |
-|---|---|---|
-| 1 | 生成 3 个全新演示账户密钥（master / LP provider / swapper）：`cast wallet new`，记录地址（不复用 anvil 的公开已知密钥） | ~3 min |
-| 2 | 通过公共 Sepolia faucet 给 master 注资（0.25–0.5 ETH；faucet 阶梯见 research.md） | ~5 min |
-| 3 | 一键部署 + 播种 + 验证：`forge script script/DeployDemoSepolia.s.sol --broadcast --verify --slow`（先导出 `SEPOLIA_RPC_URL` / `ETHERSCAN_API_KEY`） | ~10 min |
-| 4 | 重新生成前端绑定并提交：`npm run sync-deploy`（无参数、多链）→ `git add` + commit | ~2 min |
-| 5 | Vercel 导入仓库：Root Directory = `frontend/`，环境变量 `SEPOLIA_RPC_URL`（Production + Preview） | ~5 min |
-| 6 | 演示账户补款（主路径）：`./scripts/sepolia-deploy.sh fund-demo-accounts` | ~5 min |
-
-合计约 30 分钟。
-
-```bash
-# 1. 生成演示账户密钥（× 3）
-cast wallet new
-
-# 2. 用公共 Sepolia faucet 给 master 注资（阶梯见 research.md）
-
-# 3. 一键部署 + 播种 + Etherscan 验证（在 contracts/ 下；--verify 自动解码构造参数）
-export SEPOLIA_RPC_URL=... ETHERSCAN_API_KEY=...
-forge script script/DeployDemoSepolia.s.sol --rpc-url "$SEPOLIA_RPC_URL" --broadcast \
-  --verify --etherscan-api-key "$ETHERSCAN_API_KEY" --slow -vvv
-
-# 4. 重新生成前端绑定（无参数、多链）并提交
-cd ../frontend && npm run sync-deploy
-git add frontend/src/lib/contracts/addresses.ts frontend/src/lib/contracts/tokens.ts && git commit
-
-# 5. Vercel：导入仓库 → Root Directory: frontend/ → env SEPOLIA_RPC_URL (Production + Preview) → Deploy
-
-# 6. 演示账户补款（主路径）
-./scripts/sepolia-deploy.sh fund-demo-accounts
-```
-
-部署完成后：步骤 3 的所有合约地址均可在 `sepolia.etherscan.io` 上查看已验证源码；
-全新浏览器打开线上地址 <https://defi-app-three.vercel.app/>，连接 MetaMask
-（已添加 Sepolia 网络）即可加载真实链上余额与价格。
-
-`./scripts/sepolia-deploy.sh`（无子命令）可一条命令完成部署全程：preflight 检查
-（`contracts/.env`、工具链、master 余额）→ `forge build` → 对线上 Sepolia 的
-dry-run 模拟（不广播）→ `--broadcast --verify --slow` → `sync-deploy.ts` 同步 →
-打印部署地址与验证状态汇总。
-
-### 环境变量（仅服务端，绝不加 `NEXT_PUBLIC_` 前缀）
-
-| 变量 | 用途 | 说明 |
-|---|---|---|
-| `SEPOLIA_RPC_URL` | Sepolia RPC 端点（Alchemy/Infura 免费档） | 部署时供 forge 使用；前端 `/api/reserves` 服务端读取（`createServerProvider()`）—— **仅服务端使用，绝不能加 `NEXT_PUBLIC_` 前缀**；Vercel 上需在 Production + Preview 中配置 |
-| `ETHERSCAN_API_KEY` | 免费 Etherscan API key | 供 `--verify` 验证合约源码 |
-| `SEPOLIA_DEPLOYER_KEY` | master 部署账户私钥 | 部署者 + 打款源；**永不记录在任何文档**（demo-guide.md 只记录演示账户地址） |
-
-全部存放在 **gitignored** 的 `contracts/.env`（模板见 `contracts/.env.example`），
-由 `sepolia-deploy.sh` 读取，只经变量引用、绝不内联进命令行或提交记录。前端规则
-相同：环境变量仅供服务端 route handlers 读取，客户端不依赖任何环境变量。
-
-## 合约地址
-
-部署地址由 `scripts/sync-deploy.ts` 生成到
-`frontend/src/lib/contracts/addresses.ts`，为按链组织的 `DEPLOYMENTS` 记录
-（anvil 31337 + Sepolia 11155111），数据来自部署脚本的 Foundry `broadcast/` run-latest JSON。任何
-重新部署后请重新运行 `npm run sync-deploy`（在 `frontend/` 下）—— `broadcast/` 已被 gitignore，
-生成文件是纳入版本管理的。
-
-部署脚本：`contracts/script/DeployDemo.s.sol`（主演示）、
-`contracts/script/core/DeployFactory.s.sol`、`contracts/script/router/DeployRouter.s.sol`。
-
-## 测试
-
-**合约**（在 `contracts/` 下）：
-
-```bash
-forge fmt --check        # 格式检查
-forge build --sizes      # Router02 必须低于 EIP-170 的 24 KB 上限
-forge test -vvv          # 全部测试通过
-forge test --coverage    # ≥ 95% 行覆盖率
-forge snapshot           # gas 基线；CI 用 --check 对比
-```
-
-**前端**（在 `frontend/` 下）：
-
-```bash
-npm run lint             # ESLint
-npx tsc --noEmit         # TypeScript 严格模式
-npm run test             # Vitest 单元 + 组件测试
-npm run build            # Next.js 生产构建
-npm run test:e2e         # Playwright 针对本地 anvil 链的端到端测试
-```
-
-**根级脚本**（标准开发循环）：
-
-| 脚本 | 用途 |
-|---|---|
-| `./scripts/test-unit.sh` | forge test + vitest（两个包） |
-| `./scripts/test-e2e.sh` | 全新 anvil → DeployDemo → 同步 → forge test → vitest → 构建 + Playwright |
-| `./scripts/test-e2e-phase5.sh` | US3（移除流动性）循环，带 LP 就绪检查 |
-| `./scripts/dev-deploy.sh` | **快速部署**：全新 anvil → 部署 → 同步 → 验证；保持 anvil 运行供前端使用（`--dev` 另启动 `npm run dev`） |
-
-## CI
-
-GitHub Actions（`.github/workflows/test.yml`）在每次 push/PR 时运行：合约
-`forge fmt --check` → `forge build --sizes` → `forge test -vvv`（存在产物时另跑
-覆盖率和 gas snapshot），前端 `tsc --noEmit` → `npm run lint` → `npm run test` →
-`npm run build`。
-
-## 仓库结构
+一次完整 swap 的生命周期：
 
 ```text
-contracts/      Foundry 项目（core + router + DeployDemo 脚本 + 测试）
-frontend/       Next.js 15 App Router dApp（页面、hooks、生成的绑定）
-scripts/        test-unit.sh · test-e2e.sh · test-e2e-phase5.sh · dev-deploy.sh · sepolia-deploy.sh
-specs/          权威功能文档（spec、plan、tasks、quickstart）
-.github/        CI 工作流（test.yml）
+User
+  ↓
+Router（校验 deadline / slippage，算出报价）
+  ↓
+transfer tokenIn → Pair
+  ↓
+Pair 计算实际 amountIn（balance-delta：当前余额 − 储备）
+  ↓
+apply 0.3% fee
+  ↓
+enforce：
+  balance0Adjusted × balance1Adjusted ≥ reserve0 × reserve1 × 1000²
+  ↓
+update reserves
+  ↓
+update TWAP accumulator（_update）
 ```
 
-完整结构、约定与注意事项见 `specs/` 目录下的设计文档。
+报价公式（`UniswapV2Library.getAmountOut`）：
+
+```text
+amountOut =
+  amountIn × 997 × reserveOut
+  /
+  (reserveIn × 1000 + amountIn × 997)
+```
+
+关键在：Pair 不信任 Router 传进来的数字，而是用**到账后的余额减去储备**算出真实输入，再用 fee-adjusted
+invariant 卡住每一笔 swap（`contracts/src/core/UniswapV2Pair.sol:swap`）。
+
+## 为什么不是简单的 `x × y = k`
+
+很多 README 只写一句 `x·y=k`。真正执行时检查的是**把 0.3% fee 编码进 invariant**：
+
+```text
+(balance0 × 1000 − amount0In × 3)
+×
+(balance1 × 1000 − amount1In × 3)
+≥
+reserve0 × reserve1 × 1000²
+```
+
+含义：先把输入的 0.3% 扣掉（`×997/1000`），剩下的才需要满足 `k` 不变。手续费因此**不需要单独转账记账**，
+直接沉淀为 `k` 的增长反哺所有 LP。这是从"知道公式"到"实现过 AMM"的分水岭。
+
+## Liquidity & LP Accounting
+
+初始流动性（第一次 mint）：
+
+```text
+liquidity = sqrt(amount0 × amount1) − MINIMUM_LIQUIDITY
+```
+
+后续添加：
+
+```text
+liquidity = min(
+  amount0 × totalSupply / reserve0,
+  amount1 × totalSupply / reserve1
+)
+```
+
+移除流动性（burn，按比例）：
+
+```text
+amount0 = liquidity × reserve0 / totalSupply
+amount1 = liquidity × reserve1 / totalSupply
+```
+
+`MINIMUM_LIQUIDITY = 1000`（wei）在第一次 mint 时永久锁定到零地址。
+这防止了首个流动性过小导致的 pathological 份额操纵，保护 LP 份额会计不被"粉尘攻击"扭曲
+（`contracts/src/core/UniswapV2Pair.sol:mint/burn`）。
+
+## TWAP Oracle
+
+Pair 维护两个累计价格：
+
+```text
+price0CumulativeLast
+price1CumulativeLast
+```
+
+每次 `mint / burn / swap / sync` 都会经 `_update` 累加：
+
+```text
+spot price
+   ↓
+reserve1 / reserve0（UQ112x112 定点数编码）
+   ↓
+price × timeElapsed
+   ↓
+cumulative price
+```
+
+取 TWAP：
+
+```text
+TWAP =
+  (cumulativePrice(t1) − cumulativePrice(t0))
+  /
+  (t1 − t0)
+```
+
+这个点同时体现 DeFi、定点数运算、预言机、Solidity 时间加权——简历含金量很高
+（`contracts/src/core/UniswapV2Pair.sol:_update`，`UQ112x112`）。
+
+## CREATE2 Deterministic Pair
+
+```text
+tokenA + tokenB
+      ↓
+sort tokens（token0 < token1）
+      ↓
+salt = keccak256(token0, token1)
+      ↓
+CREATE2
+      ↓
+deterministic Pair address
+```
+
+意义：`Router` / library 可**不查 Factory 存储、离线推导 Pair 地址**（`pairFor`）。
+本仓库的 init-code hash 从 Factory 动态读取（而非硬编码常量），Factory 测试覆盖
+CREATE2 推导一致性。这是典型的 Solidity 面试知识点。
+
+## Protocol Fee
+
+实现的不只是"每笔收 0.3%"：
+
+```text
+Swap fee：0.30%
+
+fee off（feeTo == 0）：100% → LPs
+fee on（feeTo != 0）： 5/6 → LPs，1/6 → protocol
+```
+
+关键区别：协议费**不是每笔 swap 转 token**，而是通过 `√k` 增长给 `feeTo` mint LP
+（`_mintFee`：`liquidity = totalSupply×(√k−√kLast)/(√k×5+√kLast)`，`kLast` 跟踪）。
+无逐笔结算、无额外会计，和 Uniswap V2 的 fee-on 设计一致。
+
+## Testing & Invariants
+
+先说验证了什么，再说命令。测试按 `core / router / faucet / mocks / utils` 分类
+（`contracts/test/` 共 11 个文件）：
+
+```text
+Core
+├─ Factory / CREATE2（含 library 推导一致性）
+├─ Pair initialization（仅 Factory 可初始化）
+├─ Mint / burn（含 MINIMUM_LIQUIDITY 锁定）
+├─ Swap invariant（含 fee-adjusted K 检查）
+├─ Fee accounting（_mintFee / kLast）
+├─ TWAP（cumulative + timeElapsed）
+└─ sync / skim
+
+Router
+├─ Add / remove liquidity（含 permit 变体）
+├─ Token → Token swap（直接对）
+├─ ETH / WETH 路径
+└─ Slippage / deadline
+
+Edge cases
+├─ insufficient liquidity / output / input
+├─ zero input / output
+├─ invalid recipient
+├─ reentrancy lock（LOCKED）
+└─ reserve overflow（uint112）
+```
+
+Fuzz / invariant 现状（诚实披露）：现有 2 个 `testFuzz_*`（`Math.sqrt` 下界、faucet 时间窗），
+**尚无状态化 invariant handler**。AMM 最适合补的 invariant（路线图，按性价比排序）：
+
+```text
+reserve0 × reserve1 计入 fee 后不减少（swap 后）
+LP mint/burn 保持按比例所有权
+swap 输出永不超过储备
+totalSupply / LP 会计内部一致
+CREATE2 地址 == library 推导地址
+handler：addLiquidity / swap0For1 / swap1For0 / removeLiquidity / sync 随机执行数千次
+```
+
+前端：19 个 Vitest 单测（含 hooks/组件/绑定）+ 3 个 Playwright e2e + load 只读压测。
+命令（与 CI 一致，完整循环见脚本）：
+
+```bash
+./scripts/test-unit.sh                  # forge test + vitest（两个包）
+./scripts/test-e2e.sh                   # 全新 anvil → 部署 → 同步 → forge + vitest → 构建 + Playwright
+cd contracts && forge test -vvv && forge test --coverage
+cd frontend && npx tsc --noEmit && npm run lint && npm run test
+```
+
+CI（`.github/workflows/test.yml`）：合约 `fmt --check` → `build --sizes`（Router02 守 24KB 上限）→
+`forge test`；前端 `tsc` → `lint` → `vitest` → `build`。e2e（Playwright）在本地经脚本运行。
+
+## Security Properties
+
+- 每笔 swap 后强制恒定乘积 invariant（含 fee-adjusted 检查）
+- `mint / burn / swap / skim / sync` 全加 Pair 级重入锁
+- 初始 `MINIMUM_LIQUIDITY` 永久锁定，防首个流动性操纵
+- 储备限制在 `uint112`，溢出直接 revert
+- `initialize` 仅 Factory 可调
+- 先校验 fee-adjusted 余额，再更新储备
+- `_safeTransfer` 兼容无返回值 token；`permit` 带 deadline + 签名校验
+
+## 线上 Sepolia 部署
+
+公共 Demo **已上线**（测试网代币，无真实资金）：
+
+| 合约 | Sepolia 地址 |
+|---|---|
+| Factory | [0xc32bc046beafd48827f3d55356568476df322dde](https://sepolia.etherscan.io/address/0xc32bc046beafd48827f3d55356568476df322dde) |
+| Router02 | [0xb3cafdd61bdb7d1c24b8ec683002d1fc92401cd4](https://sepolia.etherscan.io/address/0xb3cafdd61bdb7d1c24b8ec683002d1fc92401cd4) |
+| WETH9 | [0xd1647800688ccb78c1f378329110fd10791b8af9](https://sepolia.etherscan.io/address/0xd1647800688ccb78c1f378329110fd10791b8af9) |
+| DemoFaucet | [0xcba03ecf90db02aae02fa02dbba6e55b6431b9db](https://sepolia.etherscan.io/address/0xcba03ecf90db02aae02fa02dbba6e55b6431b9db) |
+| USDC / DAI / WBTC | [0xf20503…5566](https://sepolia.etherscan.io/address/0xf205032b263672b814d26c81fa6b1c2697855566) / [0xfa30fb…7a97](https://sepolia.etherscan.io/address/0xfa30fbba942e92afe1bcfaed35698f360d9f7a97) / [0x1ea6c4…23df](https://sepolia.etherscan.io/address/0x1ea6c4954ab3632dfccdc676db96a3ec1c6023df) |
+
+- 预置交易对：WETH/USDC、WETH/DAI（Pair 地址由 library 运行时推导，不提交写死）。
+- 体验：打开 <https://defi-app-three.vercel.app/>，MetaMask 切 Sepolia 即可兑换、加/撤流动性、看持仓；
+  测试币走应用内 faucet，演示账户见 demo-guide。
+- 地址源：`frontend/src/lib/contracts/addresses.ts`（`DEPLOYMENTS`，anvil 31337 + Sepolia 11155111），
+  由 Foundry `broadcast/` 经 `npm run sync-deploy` 生成并提交。
+
+## 快速开始
+
+本地开发（一键，推荐）：
+
+```bash
+./scripts/dev-deploy.sh --dev
+# 全新 anvil → 部署完整 AMM（Factory/Router/WETH9/4 tokens/2 pairs）
+# → 同步 ABI+地址绑定 → 验证可兑换 → 启动前端 http://localhost:3000
+```
+
+完整手动步骤 → [specs/001 quickstart](specs/001-uniswap-v2-resume/quickstart.md)。
+
+复现线上部署（一键 + 文档）：
+
+```bash
+./scripts/sepolia-deploy.sh
+```
+
+完整 6 步（≤30 分钟，密钥/faucet/验证/Vercel/补款）→
+[specs/002 quickstart](specs/002-sepolia-vercel-deploy/quickstart.md)。
+环境变量模板见 `contracts/.env.example`（`SEPOLIA_RPC_URL` 仅服务端读取，绝不加 `NEXT_PUBLIC_`）。
+
+## Tech Stack
+
+| 层 | 技术 |
+|---|---|
+| 合约 | Solidity ^0.8.19，Foundry，viaIR + optimizer 200 runs |
+| 前端 | Next.js 15 App Router，React 19，TS 严格模式，ethers v6，react-query，Tailwind + shadcn/ui |
+| 测试 | Foundry（单测 + fuzz）· Vitest · Playwright · load 只读压测 |
+| 部署 | Anvil（31337）· Sepolia（11155111）· Vercel · Etherscan 验证 |
+| 绑定 | `sync-deploy`：broadcast/out → 生成的 ABI + 地址绑定 |
+
+前端页面：`/swap` 兑换 · `/liquidity` 加/撤流动性 · `/portfolio` TWAP 持仓视图 · `/faucet` 测试币水龙头 · `/debug` 调试。
+协议 70%，dApp 30%：页面是协议的展示层，核心是链上 AMM 会计。
+
+## Scope / Non-goals
+
+- 无闪电兑换（`swap` 无 `bytes data` 回调参数）。
+- 无多跳路由：所有 swap 路径限定直接对（`path.length == 2`，否则 `DirectPairOnly`）。
+- `Router02` 为子集实现（含 `removeLiquidityWithPermit`），未搬运 fee-on-transfer 兼容变体。
+- 公共 Demo 仅测试网 + faucet 资产，不涉及真实资金。
+
+## 文档
+
+- 本地可运行指南：[specs/001 quickstart](specs/001-uniswap-v2-resume/quickstart.md)
+- Sepolia 部署指南：[specs/002 quickstart](specs/002-sepolia-vercel-deploy/quickstart.md)
+- 演示叙事与账户：[specs/002 demo-guide](specs/002-sepolia-vercel-deploy/demo-guide.md)
+- Faucet / 前端 API 契约：[specs/002 contracts](specs/002-sepolia-vercel-deploy/contracts/)
+- 研究与数据模型：[specs/002 research](specs/002-sepolia-vercel-deploy/research.md) ·
+  [data-model](specs/002-sepolia-vercel-deploy/data-model.md)
 
 ## 许可证
 
