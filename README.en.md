@@ -13,45 +13,64 @@ Constant Product AMM · Liquidity Pools · LP Tokens
 Sepolia Live Demo · Verified Contracts · CI · E2E
 ```
 
-> **A Uniswap V2-inspired constant-product AMM implemented from scratch with Solidity and Foundry.**
->
-> This project **re-implements the core AMM mechanisms instead of importing / forking Uniswap
-> contracts**: `Factory` / `Pair` / LP `ERC20` / `Router02` / `WETH9` are all hand-written
-> (including the constant-product invariant, 0.3% fee encoding, LP accounting, TWAP
-> accumulator, `MINIMUM_LIQUIDITY`, and the reentrancy lock).
-
 | Entry | Link |
 |---|---|
 | 🌐 Live Demo | <https://defi-app-three.vercel.app/> |
 | ⛓ Network | Sepolia (chainId `11155111`), switch in MetaMask to interact |
-| ✅ Contracts | Factory / Router02 / WETH9 / Faucet / 4 tokens, all verified on Etherscan (addresses in [Sepolia Deployment](#sepolia-testnet-deployment)) |
+| ✅ Contracts | Factory / Router02 / WETH9 / Faucet / 4 tokens, all verified on Etherscan (addresses in [Sepolia Testnet Deployment](#sepolia-testnet-deployment)) |
 | 📖 Demo Guide | [demo-guide.md](specs/002-sepolia-vercel-deploy/demo-guide.md) (demo accounts & balances) |
 | ⚙️ Actions | [test.yml](.github/workflows/test.yml) |
 
-> 📸 Product screenshot: `docs/screenshots/swap.png` (TODO: open the Live Demo's `/swap` in a
-> 1440px browser, take a screenshot and commit it to that path; until then, see the Live Demo).
+## Overview
 
-## What I Built
+A Uniswap V2-inspired constant-product AMM **re-implemented from scratch with Solidity and
+Foundry** — not an import or fork of the canonical contracts. `Factory` / `Pair` / LP `ERC20` /
+`Router02` / `WETH9` are all hand-written, including the constant-product invariant, 0.3% fee
+encoding, LP accounting, TWAP accumulator, `MINIMUM_LIQUIDITY`, and the reentrancy lock.
 
 - **Uniswap V2 core from scratch**: `contracts/` (Foundry) hand-written `Factory`, `Pair`, LP
-  `ERC20`, plus a simplified periphery `Router02`, `WETH9`, `UniswapV2Library`, `TransferHelper`.
+  `ERC20`, plus a subset periphery `Router02`, `WETH9`, `UniswapV2Library`, `TransferHelper`.
 - **Full DEX loop**: `frontend/` (Next.js 15 App Router + ethers v6) supports Swap, Add/Remove
   Liquidity, and a Portfolio view backed by on-chain TWAP, with direct MetaMask connectivity.
-- **Public demo is live**: verified Sepolia contracts + Vercel frontend — try swapping and
-  market-making with test tokens right away.
-- **Engineering rigor**: Foundry unit + fuzz tests, frontend Vitest + Playwright, CI gates,
-  one-command local / production deployment scripts.
+- **Public demo is live**: verified Sepolia contracts + Vercel frontend — swap and
+  market-make with test tokens right away.
+- **Engineering rigor**: Foundry unit + fuzz tests, Vitest + Playwright, CI gates, one-command
+  local / production deployment scripts.
 
-## Core Features
+Core features:
 
 - Constant-product market making (`x·y=k`), direct-pair swaps
-- 0.3% swap fee (encoded into the invariant, no separate accounting)
-- LP token accounting: geometric-mean first mint + proportional mint/burn, `MINIMUM_LIQUIDITY`
-  permanently locked
-- TWAP oracle: `UQ112x112` cumulative prices + `blockTimestampLast`
-- Protocol fee: mints LP on `√k` growth (1/6 to protocol when fee-on)
-- `CREATE2` deterministic Pair addresses, derivable off-chain by the library
+- 0.3% swap fee encoded into the invariant — no separate fee accounting
+- Geometric-mean first mint + proportional LP mint/burn, `MINIMUM_LIQUIDITY` locked
+- UQ112x112 TWAP oracle (`price0/1CumulativeLast` + `blockTimestampLast`)
+- Protocol fee minted as LP on `√k` growth (1/6 to protocol when fee-on)
+- `CREATE2` deterministic pair addresses, derivable off-chain by the library
 - DemoFaucet: test-token faucet powering the public demo experience
+
+## Demo
+
+Live Demo · Sepolia (chainId `11155111`) · verified contracts (addresses in [Sepolia Testnet
+Deployment](#sepolia-testnet-deployment)).
+
+<p align="center">
+  <img src="docs/screenshots/swap.png" alt="Swap page — exchange tokens" width="720" />
+</p>
+
+<p align="center"><em>Swap — /swap (placeholder)</em></p>
+
+<p align="center">
+  <img src="docs/screenshots/liquidity.png" alt="Liquidity page — add / remove liquidity" width="720" />
+</p>
+
+<p align="center"><em>Liquidity — /liquidity (placeholder)</em></p>
+
+<p align="center">
+  <img src="docs/screenshots/portfolio.png" alt="Portfolio page — TWAP-backed position view" width="720" />
+</p>
+
+<p align="center"><em>Portfolio — /portfolio (placeholder)</em></p>
+
+Screenshots pending — placeholders; see Live Demo: <https://defi-app-three.vercel.app/>.
 
 ## Engineering Highlights
 
@@ -69,7 +88,7 @@ Sepolia Live Demo · Verified Contracts · CI · E2E
 ## Architecture
 
 ```text
-contracts/  (Foundry, Solidity ^0.8.19)
+contracts/  (Foundry, Solidity ^0.8.19, viaIR + optimizer 200 runs)
   src/core/     Factory · Pair · ERC20 (LP) · Math · SafeMath · UQ112x112
   src/router/   Router02 · WETH9 · UniswapV2Library · TransferHelper
   src/faucet/   DemoFaucet (test-token faucet powering the public demo)
@@ -78,230 +97,72 @@ contracts/  (Foundry, Solidity ^0.8.19)
 Foundry deploy artifacts (out/ ABIs + broadcast/ per-chain addresses)
           ↓  sync-deploy (npm run sync-deploy, argumentless multi-chain)
           ↓  generated ABIs + address bindings
-Next.js dApp (/swap · /liquidity · /portfolio · /debug)
+Next.js dApp (React 19, ethers v6, Tailwind + shadcn/ui) — /swap · /liquidity · /portfolio · /faucet · /debug
 ```
 
 The two packages are coupled only through generated artifacts (ABIs + deployed addresses);
-there is no root-level workspace. Full conventions live in the `specs/` design docs.
+there is no root-level workspace. Full conventions live in the `specs/` design docs; package
+details in `contracts/README.md` and `frontend/README.md`.
 
 ## Core AMM Mechanics
 
-Lifecycle of a complete swap:
+Six mechanisms define the pair contracts; each has a dedicated doc with the full derivation.
+Code references: `contracts/src/core/UniswapV2Pair.sol`, `UniswapV2Factory.sol`,
+`contracts/src/router/libraries/UniswapV2Library.sol`.
 
-```text
-User
-  ↓
-Router (checks deadline / slippage, computes quote)
-  ↓
-transfer tokenIn → Pair
-  ↓
-Pair computes actual amountIn (balance-delta: current balance − reserve)
-  ↓
-apply 0.3% fee
-  ↓
-enforce:
-  balance0Adjusted × balance1Adjusted ≥ reserve0 × reserve1 × 1000²
-  ↓
-update reserves
-  ↓
-update TWAP accumulator (_update)
-```
+- **Swap lifecycle** — Router checks deadline/slippage and quotes via `getAmountOut`
+  (`amountIn × 997 × reserveOut / (reserveIn × 1000 + amountIn × 997)`); the Pair measures the
+  actual input as balance-after-transfer minus reserve, applies the 0.3% fee, enforces the
+  invariant, then updates reserves and the TWAP accumulator. [Docs](docs/amm-mechanics.md)
+- **Fee-adjusted invariant** — the check that executes per swap encodes the 0.3% fee:
+  `balance0Adjusted × balance1Adjusted ≥ reserve0 × reserve1 × 1000²`, where
+  `balanceAdjusted = balance × 1000 − amountIn × 3`. No separate fee accounting — the fee
+  settles as `k` growth. [Docs](docs/amm-mechanics.md)
+- **LP accounting** — first mint is geometric mean `sqrt(amount0 × amount1) −
+  MINIMUM_LIQUIDITY` (1000 wei locked to `address(0)`); later mints/burns are proportional to
+  the smaller deposit ratio; removal pays out `liquidity × reserve / totalSupply` per token.
+  [Docs](docs/amm-mechanics.md)
+- **CREATE2 pair address** — pairs deploy with `salt = keccak256(abi.encodePacked(token0,
+  token1))` after sorting; the library derives addresses off-chain from the Factory's
+  init-code hash (`pairFor`). [Docs](docs/amm-mechanics.md)
+- **TWAP oracle** — two UQ112x112 cumulative price accumulators updated by `_update` on every
+  `mint/burn/swap/sync`; TWAP over [t0, t1] is the accumulator difference divided by elapsed
+  time. [Docs](docs/twap.md)
+- **Protocol fee** — when `feeTo` is set, `_mintFee` mints LP on `√k` growth since `kLast`
+  (`totalSupply × (√k − √kLast) / (√k × 5 + √kLast)`): 1/6 of swap fees to the protocol, no
+  per-trade transfers. [Docs](docs/protocol-fee.md)
 
-Quote formula (`UniswapV2Library.getAmountOut`):
+## Testing & Security
 
-```text
-amountOut =
-  amountIn × 997 × reserveOut
-  /
-  (reserveIn × 1000 + amountIn × 997)
-```
+Contracts: 12 test files in `contracts/test/` organized by `core / router / faucet / invariant /
+utils`, covering Factory/CREATE2 derivation, Factory-only pair initialization, mint/burn with
+the `MINIMUM_LIQUIDITY` lock, the fee-adjusted swap invariant, `_mintFee` / `kLast`, TWAP
+accumulators, edge cases, and the reentrancy lock. Beyond 2 `testFuzz_*` tests, the suite runs
+**stateful invariant fuzzing across randomized liquidity and swap sequences**. Frontend tests
+live in `frontend/tests/` (`unit/` for Vitest, `e2e/` for Playwright).
 
-The key point: the Pair does not trust the numbers the Router passes in — it computes the real
-input as **balance after receipt minus reserve**, then gates every swap with the fee-adjusted
-invariant (`contracts/src/core/UniswapV2Pair.sol:swap`).
-
-## Why it's not just `x × y = k`
-
-Many READMEs stop at a single line `x·y=k`. What actually executes is the check with the
-**0.3% fee encoded into the invariant**:
-
-```text
-(balance0 × 1000 − amount0In × 3)
-×
-(balance1 × 1000 − amount1In × 3)
-≥
-reserve0 × reserve1 × 1000²
-```
-
-Meaning: first deduct 0.3% of the input (`×997/1000`); the remainder must then satisfy `k`
-invariance. The fee therefore needs **no separate transfer accounting** — it settles directly
-as `k` growth that rewards all LPs. This is the line between "knowing the formula" and
-"having implemented an AMM".
-
-## Liquidity & LP Accounting
-
-Initial liquidity (first mint):
-
-```text
-liquidity = sqrt(amount0 × amount1) − MINIMUM_LIQUIDITY
-```
-
-Subsequent adds:
-
-```text
-liquidity = min(
-  amount0 × totalSupply / reserve0,
-  amount1 × totalSupply / reserve1
-)
-```
-
-Removing liquidity (burn, proportional):
-
-```text
-amount0 = liquidity × reserve0 / totalSupply
-amount1 = liquidity × reserve1 / totalSupply
-```
-
-`MINIMUM_LIQUIDITY = 1000` (wei) is permanently locked to the zero address at the first mint.
-This prevents pathological share manipulation from an undersized first deposit, protecting LP
-share accounting from "dust attack" distortion
-(`contracts/src/core/UniswapV2Pair.sol:mint/burn`).
-
-## TWAP Oracle
-
-The Pair maintains two cumulative prices:
-
-```text
-price0CumulativeLast
-price1CumulativeLast
-```
-
-Every `mint / burn / swap / sync` accumulates through `_update`:
-
-```text
-spot price
-   ↓
-reserve1 / reserve0 (UQ112x112 fixed-point encoding)
-   ↓
-price × timeElapsed
-   ↓
-cumulative price
-```
-
-Taking the TWAP:
-
-```text
-TWAP =
-  (cumulativePrice(t1) − cumulativePrice(t0))
-  /
-  (t1 − t0)
-```
-
-This one spot shows DeFi, fixed-point math, oracles, and Solidity time-weighting in a single
-mechanism — high resume value
-(`contracts/src/core/UniswapV2Pair.sol:_update`, `UQ112x112`).
-
-## CREATE2 Deterministic Pair
-
-```text
-tokenA + tokenB
-      ↓
-sort tokens (token0 < token1)
-      ↓
-salt = keccak256(token0, token1)
-      ↓
-CREATE2
-      ↓
-deterministic Pair address
-```
-
-Significance: the `Router` / library can derive the Pair address **off-chain without querying
-Factory storage** (`pairFor`). This repo reads the init-code hash dynamically from the Factory
-(rather than a hardcoded constant), and the Factory tests cover CREATE2 derivation
-consistency. A classic Solidity interview topic.
-
-## Protocol Fee
-
-More than just "charge 0.3% per trade":
-
-```text
-Swap fee: 0.30%
-
-fee off (feeTo == 0): 100% → LPs
-fee on (feeTo != 0):  5/6 → LPs, 1/6 → protocol
-```
-
-Key difference: the protocol fee is **not a token transfer per swap** — it mints LP to `feeTo`
-on `√k` growth (`_mintFee`: `liquidity = totalSupply×(√k−√kLast)/(√k×5+√kLast)`, tracked via
-`kLast`). No per-trade settlement, no extra accounting — consistent with Uniswap V2's fee-on
-design.
-
-## Testing & Invariants
-
-What's verified first, then the commands. Tests are organized by
-`core / router / faucet / mocks / utils` (11 files total in `contracts/test/`):
-
-```text
-Core
-├─ Factory / CREATE2 (incl. library derivation consistency)
-├─ Pair initialization (Factory-only)
-├─ Mint / burn (incl. MINIMUM_LIQUIDITY lock)
-├─ Swap invariant (incl. fee-adjusted K check)
-├─ Fee accounting (_mintFee / kLast)
-├─ TWAP (cumulative + timeElapsed)
-└─ sync / skim
-
-Router
-├─ Add / remove liquidity (incl. permit variants)
-├─ Token → Token swap (direct pair)
-├─ ETH / WETH paths
-└─ Slippage / deadline
-
-Edge cases
-├─ insufficient liquidity / output / input
-├─ zero input / output
-├─ invalid recipient
-├─ reentrancy lock (LOCKED)
-└─ reserve overflow (uint112)
-```
-
-Fuzz / invariant status (honest disclosure): there are currently 2 `testFuzz_*` tests
-(`Math.sqrt` lower bound, faucet time window) but **no stateful invariant handler yet**.
-The invariants an AMM is best suited for (roadmap, ordered by cost/benefit):
-
-```text
-reserve0 × reserve1 does not decrease after fees (post-swap)
-LP mint/burn preserves proportional ownership
-swap output never exceeds reserves
-totalSupply / LP accounting internally consistent
-CREATE2 address == library-derived address
-handler: addLiquidity / swap0For1 / swap1For0 / removeLiquidity / sync executed randomly thousands of times
-```
-
-Frontend: 19 Vitest unit tests (hooks/components/bindings) + 3 Playwright e2e + read-only load
-test. Commands (identical to CI; full loops live in the scripts):
+Frontend: 19 Vitest unit tests (hooks/components/bindings) + 3 Playwright e2e (portfolio,
+remove-liquidity, responsive) + a read-only load test (`frontend/tests/load/`). Commands
+(identical to CI; full loops live in the scripts):
 
 ```bash
 ./scripts/test-unit.sh                  # forge test + vitest (both packages)
-./scripts/test-e2e.sh                   # fresh anvil → deploy → sync → forge + vitest → build + Playwright
+./scripts/test-e2e.sh                   # fresh anvil → deploy → sync → tests → build + Playwright
 cd contracts && forge test -vvv && forge test --coverage
-cd frontend && npx tsc --noEmit && npm run lint && npm run test
+cd frontend && npx vitest run && npx tsc --noEmit && npm run lint
 ```
 
-CI (`.github/workflows/test.yml`): contracts `fmt --check` → `build --sizes` (Router02 held to
-the 24KB limit) → `forge test`; frontend `tsc` → `lint` → `vitest` → `build`. e2e (Playwright)
-runs locally via the scripts.
+CI (`.github/workflows/test.yml`): contracts `fmt --check` → `build --sizes` → `forge test`;
+frontend `tsc` → `lint` → `vitest` → `build`; e2e runs locally via `./scripts/test-e2e.sh`.
 
-## Security Properties
+Security properties:
 
-- Constant-product invariant enforced after every swap (incl. fee-adjusted check)
+- Fee-adjusted invariant enforced after every swap
 - Pair-level reentrancy lock on all of `mint / burn / swap / skim / sync`
-- Initial `MINIMUM_LIQUIDITY` permanently locked, preventing first-liquidity manipulation
+- `MINIMUM_LIQUIDITY` permanently locked at the first mint
 - Reserves capped at `uint112`; overflow reverts outright
 - `initialize` callable only by the Factory
-- Fee-adjusted balances checked before reserves are updated
-- `_safeTransfer` compatible with non-returning tokens; `permit` with deadline + signature
-  verification
+- `_safeTransfer` accepts non-returning tokens; `permit` with deadline + signature checks
 
 ## Sepolia Testnet Deployment
 
@@ -326,6 +187,10 @@ The public demo **is live** (testnet tokens, no real funds):
 
 ## Quick Start
 
+After a fresh clone: `forge install` in `contracts/` (plus
+`forge install openzeppelin-contracts` — present in `lib/` + remappings but not in
+`.gitmodules`) and `npm install` in `frontend/`.
+
 Local development (one command, recommended):
 
 ```bash
@@ -347,20 +212,6 @@ Full 6 steps (≤30 min: keys/faucet/verification/Vercel/top-up) →
 Env var template in `contracts/.env.example` (`SEPOLIA_RPC_URL` is read server-side only, never
 prefixed with `NEXT_PUBLIC_`).
 
-## Tech Stack
-
-| Layer | Tech |
-|---|---|
-| Contracts | Solidity ^0.8.19, Foundry, viaIR + optimizer 200 runs |
-| Frontend | Next.js 15 App Router, React 19, strict TS, ethers v6, react-query, Tailwind + shadcn/ui |
-| Testing | Foundry (unit + fuzz) · Vitest · Playwright · read-only load test |
-| Deployment | Anvil (31337) · Sepolia (11155111) · Vercel · Etherscan verification |
-| Bindings | `sync-deploy`: broadcast/out → generated ABIs + address bindings |
-
-Frontend pages: `/swap` swap · `/liquidity` add/remove liquidity · `/portfolio` TWAP position
-view · `/faucet` test-token faucet · `/debug` debug. Protocol 70%, dApp 30%: pages are the presentation layer of the
-protocol; the core is on-chain AMM accounting.
-
 ## Scope / Non-goals
 
 - No flash swaps (`swap` has no `bytes data` callback parameter).
@@ -372,6 +223,12 @@ protocol; the core is on-chain AMM accounting.
 
 ## Docs
 
+- AMM mechanics — swap lifecycle, fee-adjusted invariant, LP accounting, CREATE2:
+  [docs/amm-mechanics.md](docs/amm-mechanics.md)
+- TWAP oracle — UQ112x112 accumulators and Δcumulative/Δt:
+  [docs/twap.md](docs/twap.md)
+- Protocol fee — `_mintFee` `√k` formula and the 1/6 split:
+  [docs/protocol-fee.md](docs/protocol-fee.md)
 - Runnable local guide: [specs/001 quickstart](specs/001-uniswap-v2-resume/quickstart.md)
 - Sepolia deployment guide: [specs/002 quickstart](specs/002-sepolia-vercel-deploy/quickstart.md)
 - Demo narrative & accounts: [specs/002 demo-guide](specs/002-sepolia-vercel-deploy/demo-guide.md)
